@@ -1,0 +1,34 @@
+OVERVIEW
+
+L1 is a language with JavaScript syntax and visualization semantics. It compiles
+JavaScript code to a collection of graphics files (PNG and SVG) that render the
+static semantics of the input.
+
+
+
+BUILDING
+
+To build:
+
+   cd build
+   ./make.sh
+
+This produces the file:
+
+   ../bin/l1c.swf
+
+
+USING
+
+To run:
+
+   ./comp.sh some.source.js
+
+This produces the file:
+
+    some.source.js.karyotype
+    some.source.js.l4
+    some.source.js-breaks.links
+
+(and possibly supplementary files.)
+
