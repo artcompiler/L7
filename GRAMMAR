@@ -1,0 +1,526 @@
+Keyword  [one of]
+    break
+    delete
+    import
+    this
+    case
+    do
+    in
+    throw
+    catch
+    else
+    instanceof
+    try
+    class
+    export
+    let
+    typeof
+    continue
+    finally
+    new
+    var
+    const
+    for
+    return
+    void
+    debugger
+    function
+    super
+    while
+    default
+    if
+    switch
+    with
+
+FutureReservedWord  [one of]
+    enum
+    extends
+
+Punctuator  [one of]
+    {
+    }
+    (
+    )
+    [
+    ]
+    .
+    ;
+    ,
+    <
+    >
+    <=
+    >=
+    ==
+    !=
+    ===
+    !==
+    +
+    -
+    *
+    %
+    ++
+    --
+    <<
+    >>
+    >>>
+    &
+    |
+    ^
+    !
+    ~
+    &&
+    ||
+    ?
+    :
+    =
+    +=
+    -=
+    *=
+    %=
+    <<=
+    >>=
+    >>>=
+    &=
+    |=
+    ^=
+    <|
+
+DivPunctuator  [one of]
+    /
+    /=
+
+NumericLiteral 
+    DecimalLiteral
+    BinaryIntegerLiteral
+    OctalIntegerLiteral
+    HexIntegerLiteral
+
+DecimalLiteral 
+    DecimalIntegerLiteral . DecimalDigitsopt ExponentPartopt
+    . DecimalDigits ExponentPartopt
+    DecimalIntegerLiteral ExponentPartopt
+
+DecimalIntegerLiteral 
+    0
+    NonZeroDigit DecimalDigitsopt
+
+DecimalDigits 
+    DecimalDigit
+    DecimalDigits DecimalDigit
+
+DecimalDigit  [one of]
+    0 1 2 3 4 5 6 7 8 9
+
+NonZeroDigit  [one of]
+    1 2 3 4 5 6 7 8 9
+
+ExponentPart 
+    ExponentIndicator SignedInteger
+
+ExponentIndicator  [one of]
+    e E
+
+SignedInteger 
+    DecimalDigits + DecimalDigits - DecimalDigits
+
+BinaryIntegerLiteral 
+    0b BinaryDigit
+    0B BinaryDigit
+    BinaryIntegerLiteral BinaryDigit
+
+BinaryDigit  [one of]
+    0 1
+
+OctalIntegerLiteral 
+    0o OctalDigit 0O OctalDigit OctalIntegerLiteral OctalDigit
+
+OctalDigit  [one of]
+    0 1 2 3 4 5 6 7
+
+HexIntegerLiteral 
+    0x HexDigit 0X HexDigit HexIntegerLiteral HexDigit
+
+HexDigit  [one of]
+    0 1 2 3 4 5 6 7 8 9 a b c d e f A B C D E F
+
+StringLiteral 
+    " DoubleStringCharactersopt "
+    ' SingleStringCharactersopt '
+
+DoubleStringCharacters 
+    DoubleStringCharacter DoubleStringCharactersopt
+
+SingleStringCharacters 
+    SingleStringCharacter SingleStringCharactersopt
+
+DoubleStringCharacter 
+    SourceCharacter but not [one of] " or \ or LineTerminator \ EscapeSequence LineContinuation
+
+SingleStringCharacter 
+    SourceCharacter but not [one of] ' or \ or LineTerminator \ EscapeSequence LineContinuation
+
+LineContinuation 
+    \ LineTerminatorSequence
+
+EscapeSequence 
+    CharacterEscapeSequence 0 [lookahead  DecimalDigit] HexEscapeSequence UnicodeEscapeSequence
+
+CharacterEscapeSequence 
+    SingleEscapeCharacter
+    NonEscapeCharacter
+
+SingleEscapeCharacter  [one of]
+    ' " \ b f n r t v
+
+NonEscapeCharacter 
+    SourceCharacter but not [one of] EscapeCharacter or LineTerminator
+
+EscapeCharacter 
+    SingleEscapeCharacter DecimalDigit x u
+
+HexEscapeSequence 
+    x HexDigit HexDigit
+
+UnicodeEscapeSequence 
+    u HexDigit HexDigit HexDigit HexDigit
+
+RegularExpressionLiteral 
+    / RegularExpressionBody / RegularExpressionFlags
+
+RegularExpressionBody 
+    RegularExpressionFirstChar RegularExpressionChars
+
+RegularExpressionChars 
+    [empty]
+    RegularExpressionChars RegularExpressionChar
+
+RegularExpressionFirstChar 
+    RegularExpressionNonTerminator but not [one of] * or \ or / or [ 
+    RegularExpressionBackslashSequence RegularExpressionClass
+
+RegularExpressionChar 
+    RegularExpressionNonTerminator but not [one of] \ or / or [
+    RegularExpressionBackslashSequence
+    RegularExpressionClass
+
+RegularExpressionBackslashSequence 
+    \ RegularExpressionNonTerminator
+
+RegularExpressionNonTerminator 
+    SourceCharacter but not LineTerminator
+
+RegularExpressionClass 
+    [ RegularExpressionClassChars ]
+
+RegularExpressionClassChars 
+    [empty]
+    RegularExpressionClassChars RegularExpressionClassChar
+
+RegularExpressionClassChar 
+    RegularExpressionNonTerminator but not [one of] ] or \
+    RegularExpressionBackslashSequence
+
+RegularExpressionFlags 
+    [empty]
+    RegularExpressionFlags IdentifierPart
+
+SYNTACTIC GRAMMAR
+
+PrimaryExpression 
+    this
+    Identifier
+    Literal
+    ArrayLiteral
+    ObjectLiteral
+    FunctionExpression
+    ClassExpression
+    GeneratorExpression
+    GeneratorComprehension
+    ( Expression )
+
+Literal 
+    NullLiteral
+    ValueLiteral
+
+ValueLiteral 
+    BooleanLiteral
+    NumericLiteral
+    StringLiteral
+    RegularExpressionLiteral
+
+ArrayInitialiser 
+    ArrayLiteral
+    ArrayComprehension
+
+ArrayLiteral 
+    [ Elisionopt ]
+    [ ElementList ]
+    [ ElementList , Elisionopt ]
+
+ElementList 
+    Elisionopt AssignmentExpression
+    Elisionopt … AssignmentExpression
+    ElementList , Elisionopt AssignmentExpression
+    ElementList , Elisionopt SpreadElement
+
+Elision 
+    ,
+    Elision ,
+
+SpreadElement 
+    … AssignmentExpression
+
+ArrayComprehension 
+    [ AssignmentExpression ComprehensionForList ]
+    [ AssignmentExpression ComprehensionForList if Expression ]
+
+ComprehensionForList 
+    ComprehensionFor
+    ComprehensionForList ComprehensionFor
+
+ComprehensionFor 
+    for ForBinding of Expression
+
+ForBinding 
+    BindingIdentifier
+    BindingPattern
+
+ObjectLiteral 
+    { }
+    { PropertyDefinitionList }
+    { PropertyDefinitionList , }
+
+PropertyDefinitionList 
+    PropertyDefinition
+    PropertyDefinitionList , PropertyDefinition
+
+PropertyDefinition 
+    IdentifierName
+    PropertyName  AssignmentExpression
+    MethodDefinition
+
+PropertyName 
+    IdentifierName
+    StringLiteral
+    NumericLiteral
+
+GeneratorComprehension 
+    ( Expression ComprehensionForList )
+    ( Expression ComprehensionForList if Expression )
+
+MemberExpression 
+    PrimaryExpression
+    MemberExpression [ Expression ]
+    MemberExpression . IdentifierName
+    super [ Expression ]
+    super . IdentifierName
+    new MemberExpression Arguments
+
+NewExpression 
+    MemberExpression
+    new NewExpression
+
+CallExpression 
+    MemberExpression Arguments
+    super Arguments
+    CallExpression Arguments
+    CallExpression [ Expression ]
+    CallExpression . IdentifierName
+
+Arguments 
+    ( )
+    ( ArgumentList )
+
+ArgumentList 
+    AssignmentExpression
+    ... AssignmentExpression
+    ArgumentList , AssignmentExpression
+    ArgumentList , ... AssignmentExpression
+
+LeftHandSideExpression 
+    NewExpression
+    CallExpression
+
+PostfixExpression 
+    LeftHandSideExpression
+    LeftHandSideExpression [no LineTerminator here] ++
+    LeftHandSideExpression [no LineTerminator here] --
+
+UnaryExpression 
+    PostfixExpression
+    delete UnaryExpression
+    void UnaryExpression
+    typeof UnaryExpression
+    ++ UnaryExpression
+    -- UnaryExpression
+    + UnaryExpression
+    - UnaryExpression
+    ~ UnaryExpression
+    ! UnaryExpression
+
+MultiplicativeExpression 
+    UnaryExpression
+    MultiplicativeExpression * UnaryExpression
+    MultiplicativeExpression / UnaryExpression
+    MultiplicativeExpression % UnaryExpression
+
+AdditiveExpression 
+    MultiplicativeExpression
+    AdditiveExpression + MultiplicativeExpression
+    AdditiveExpression - MultiplicativeExpression
+
+ShiftExpression 
+    AdditiveExpression
+    ShiftExpression << AdditiveExpression
+    ShiftExpression >> AdditiveExpression
+    ShiftExpression >>> AdditiveExpression
+
+RelationalExpression 
+    ShiftExpression
+    RelationalExpression < ShiftExpression
+    RelationalExpression > ShiftExpression
+    RelationalExpression <= ShiftExpression
+    RelationalExpression >= ShiftExpression
+    RelationalExpression instanceof ShiftExpression
+    RelationalExpression in ShiftExpression
+
+RelationalExpressionNoIn 
+    ShiftExpression
+    RelationalExpressionNoIn < ShiftExpression
+    RelationalExpressionNoIn > ShiftExpression
+    RelationalExpressionNoIn <= ShiftExpression
+    RelationalExpressionNoIn >= ShiftExpression
+    RelationalExpressionNoIn instanceof ShiftExpression
+
+EqualityExpression 
+    RelationalExpression
+    EqualityExpression == RelationalExpression
+    EqualityExpression != RelationalExpression
+    EqualityExpression === RelationalExpression
+    EqualityExpression !== RelationalExpression
+    EqualityExpression [no LineTerminator here] is RelationalExpression
+    EqualityExpression [no LineTerminator here] isnt RelationalExpression
+
+EqualityExpressionNoIn 
+    RelationalExpressionNoIn
+    EqualityExpressionNoIn == RelationalExpressionNoIn
+    EqualityExpressionNoIn != RelationalExpressionNoIn
+    EqualityExpressionNoIn === RelationalExpressionNoIn
+    EqualityExpressionNoIn !== RelationalExpressionNoIn
+    EqualityExpression [no LineTerminator here] is RelationalExpression
+    EqualityExpression [no LineTerminator here] isnt RelationalExpression
+
+BitwiseANDExpression 
+    EqualityExpression
+    BitwiseANDExpression & EqualityExpression
+
+BitwiseANDExpressionNoIn 
+    EqualityExpressionNoIn
+    BitwiseANDExpressionNoIn & EqualityExpressionNoIn
+
+BitwiseXORExpression 
+    BitwiseANDExpression
+    BitwiseXORExpression ^ BitwiseANDExpression
+
+BitwiseXORExpressionNoIn 
+    BitwiseANDExpressionNoIn
+    BitwiseXORExpressionNoIn ^ BitwiseANDExpressionNoIn
+
+BitwiseORExpression 
+    BitwiseXORExpression
+    BitwiseORExpression | BitwiseXORExpression
+
+BitwiseORExpressionNoIn 
+    BitwiseXORExpressionNoIn
+    BitwiseORExpressionNoIn | BitwiseXORExpressionNoIn
+
+LogicalANDExpression 
+    BitwiseORExpression
+    LogicalANDExpression && BitwiseORExpression
+
+LogicalANDExpressionNoIn 
+    BitwiseORExpressionNoIn
+    LogicalANDExpressionNoIn && BitwiseORExpressionNoIn
+
+LogicalORExpression 
+    LogicalANDExpression
+    LogicalORExpression || LogicalANDExpression
+
+LogicalORExpressionNoIn 
+    LogicalANDExpressionNoIn
+    LogicalORExpressionNoIn || LogicalANDExpressionNoIn
+
+ConditionalExpression 
+    LogicalORExpression
+    LogicalORExpression ? AssignmentExpression : AssignmentExpression
+
+ConditionalExpressionNoIn
+    LogicalORExpressionNoIn
+    LogicalORExpressionNoIn ? AssignmentExpression : AssignmentExpressionNoIn
+
+AssignmentExpression 
+    ConditionalExpression
+    YieldExpression
+    ArrowFunction
+    LeftHandSideExpression = AssignmentExpression
+    LeftHandSideExpression AssignmentOperator AssignmentExpression
+
+AssignmentExpressionNoIn 
+    ConditionalExpressionNoIn
+    YieldExpression
+    ArrowFunction
+    LeftHandSideExpression = AssignmentExpressionNoIn
+    LeftHandSideExpression AssignmentOperator AssignmentExpressionNoIn
+
+AssignmentOperator  [one of]
+    *=
+    /=
+    %=
+    +=
+    -=
+    <<=
+    >>=
+    >>>=
+    &=
+    ^=
+    |=
+
+AssignmentPattern 
+    ObjectAssignmentPattern ArrayAssignmentPattern
+
+ObjectAssignmentPattern 
+    { }
+    { AssignmentPropertyList }
+    { AssignmentPropertyList , }
+
+ArrayAssignmentPattern 
+    [ Elisionopt AssignmentRestElementopt ]
+    [ AssignmentElementList ]
+    [ AssignmentElementList , Elisionopt AssignmentRestElementopt ]
+
+AssignmentPropertyList 
+    AssignmentProperty
+    AssignmentPropertyList , AssignmentProperty
+
+AssignmentElementList 
+    Elisionopt AssignmentElement
+    AssignmentElementList , Elisionopt AssignmentElement
+
+AssignmentProperty 
+    Identifier Initialiseropt
+    PropertyName  AssignmentElement
+
+AssignmentElement 
+    LeftHandSideExpression Initialiseropt
+
+AssignmentRestElement 
+    … LeftHandSideExpression
+
+Expression 
+    AssignmentExpression
+    Expression , AssignmentExpression
+
+ExpressionNoIn 
+    AssignmentExpressionNoIn
+    ExpressionNoIn , AssignmentExpressionNoIn
+
