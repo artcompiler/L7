@@ -1,9 +1,11 @@
 OVERVIEW
 
-L1 is a language with JavaScript syntax and visualization semantics. It compiles
-JavaScript code to a collection of graphics files (PNG and SVG) that render the
-static semantics of the input.
+L7 is a language with ECMAScript 6 syntax and AST construction semantics. It tracks the latest ES6
+spec posted here: http://wiki.ecmascript.org/doku.php?id=harmony:specification_drafts
 
+L7 is written in L0. 
+
+L7 parses ES6 to JSON formatted ASTs, and emits ES6 from those ASTs.
 
 
 BUILDING
@@ -15,20 +17,23 @@ To build:
 
 This produces the file:
 
-   ../bin/l1c.swf
+   ../bin/l7c.swf
 
 
 USING
 
 To run:
 
-   ./comp.sh some.source.js
+    ./comp.sh some.source.es6
 
-This produces the file:
+or
 
-    some.source.js.karyotype
-    some.source.js.l4
-    some.source.js-breaks.links
+    avmshell ../bin/l7c.swf some.source.es6
 
-(and possibly supplementary files.)
+where avmshell is the name of a recent build of Tamarin.
+
+
+These produce the file:
+
+    some.source.es6.ast
 
