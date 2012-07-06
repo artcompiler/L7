@@ -1,4 +1,107 @@
-Keyword  [one of]
+LEXICAL SYNTAX
+
+InputElementDiv 
+    WhiteSpace
+    LineTerminator
+    Comment
+    Token
+    DivPunctuator
+
+InputElementRegExp 
+    WhiteSpace
+    LineTerminator
+    Comment
+    Token
+    RegularExpressionLiteral
+
+WhiteSpace 
+    <TAB>
+    <VT>
+    <FF>
+    <SP>
+    <NBSP>
+    <BOM>
+    <USP>
+
+LineTerminator 
+    <LF>
+    <CR>
+    <LS>
+    <PS>
+
+LineTerminatorSequence 
+    <LF>
+    <CR> [lookahead not <LF> ]
+    <LS>
+    <PS>
+    <CR> <LF>
+
+Comment
+    MultiLineComment
+    SingleLineComment
+
+MultiLineComment
+    /* MultiLineCommentCharsOpt */
+
+MultiLineCommentChars 
+    MultiLineNotAsteriskChar MultiLineCommentCharsOpt
+    * PostAsteriskCommentCharsOpt
+
+PostAsteriskCommentChars
+    MultiLineNotForwardSlashOrAsteriskChar MultiLineCommentCharsOpt
+    * PostAsteriskCommentCharsOpt
+
+MultiLineNotAsteriskChar 
+    SourceCharacter [but not *]
+
+MultiLineNotForwardSlashOrAsteriskChar 
+    SourceCharacter [but not one of / or *]
+
+SingleLineComment 
+    // SingleLineCommentCharsOpt
+
+SingleLineCommentChars 
+    SingleLineCommentChar SingleLineCommentCharsOpt
+
+SingleLineCommentChar 
+    SourceCharacter [but not LineTerminator]
+
+Token 
+    IdentifierName
+    Punctuator
+    NumericLiteral
+    StringLiteral
+
+Identifier 
+    IdentifierName [but not ReservedWord]
+
+IdentifierName 
+    IdentifierStart
+    IdentifierName IdentifierPart
+
+IdentifierStart 
+    UnicodeLetter
+    $
+    _
+    \ UnicodeEscapeSequence
+
+UnicodeCombiningMark 
+    [any character in the Unicode categories “Non-spacing mark (Mn)” 
+     or “Combining spacing mark (Mc)”]
+
+UnicodeDigit 
+    [any character in the Unicode category “Decimal number (Nd)”]
+
+UnicodeConnectorPunctuation 
+    [any character in the Unicode category “Connector punctuation (Pc)”]
+
+ReservedWord 
+    Keyword
+    FutureReservedWord
+    NullLiteral
+    BooleanLiteral
+
+Keyword [one of]
     break
     delete
     import
@@ -32,11 +135,11 @@ Keyword  [one of]
     switch
     with
 
-FutureReservedWord  [one of]
+FutureReservedWord [one of]
     enum
     extends
 
-Punctuator  [one of]
+Punctuator [one of]
     {
     }
     (
@@ -85,7 +188,7 @@ Punctuator  [one of]
     ^=
     <|
 
-DivPunctuator  [one of]
+DivPunctuator [one of]
     /
     /=
 
@@ -96,28 +199,28 @@ NumericLiteral
     HexIntegerLiteral
 
 DecimalLiteral 
-    DecimalIntegerLiteral . DecimalDigitsopt ExponentPartopt
-    . DecimalDigits ExponentPartopt
-    DecimalIntegerLiteral ExponentPartopt
+    DecimalIntegerLiteral . DecimalDigitsOpt ExponentPartOpt
+    . DecimalDigits ExponentPartOpt
+    DecimalIntegerLiteral ExponentPartOpt
 
 DecimalIntegerLiteral 
     0
-    NonZeroDigit DecimalDigitsopt
+    NonZeroDigit DecimalDigitsOpt
 
 DecimalDigits 
     DecimalDigit
     DecimalDigits DecimalDigit
 
-DecimalDigit  [one of]
+DecimalDigit [one of]
     0 1 2 3 4 5 6 7 8 9
 
-NonZeroDigit  [one of]
+NonZeroDigit [one of]
     1 2 3 4 5 6 7 8 9
 
 ExponentPart 
     ExponentIndicator SignedInteger
 
-ExponentIndicator  [one of]
+ExponentIndicator [one of]
     e E
 
 SignedInteger 
@@ -128,36 +231,36 @@ BinaryIntegerLiteral
     0B BinaryDigit
     BinaryIntegerLiteral BinaryDigit
 
-BinaryDigit  [one of]
+BinaryDigit [one of]
     0 1
 
 OctalIntegerLiteral 
     0o OctalDigit 0O OctalDigit OctalIntegerLiteral OctalDigit
 
-OctalDigit  [one of]
+OctalDigit [one of]
     0 1 2 3 4 5 6 7
 
 HexIntegerLiteral 
     0x HexDigit 0X HexDigit HexIntegerLiteral HexDigit
 
-HexDigit  [one of]
+HexDigit [one of]
     0 1 2 3 4 5 6 7 8 9 a b c d e f A B C D E F
 
 StringLiteral 
-    " DoubleStringCharactersopt "
-    ' SingleStringCharactersopt '
+    " DoubleStringCharactersOpt "
+    ' SingleStringCharactersOpt '
 
 DoubleStringCharacters 
-    DoubleStringCharacter DoubleStringCharactersopt
+    DoubleStringCharacter DoubleStringCharactersOpt
 
 SingleStringCharacters 
-    SingleStringCharacter SingleStringCharactersopt
+    SingleStringCharacter SingleStringCharactersOpt
 
 DoubleStringCharacter 
-    SourceCharacter but not [one of] " or \ or LineTerminator \ EscapeSequence LineContinuation
+    SourceCharacter [but not one of " or \ or LineTerminator \ EscapeSequence LineContinuation]
 
 SingleStringCharacter 
-    SourceCharacter but not [one of] ' or \ or LineTerminator \ EscapeSequence LineContinuation
+    SourceCharacter [but not one of ' or \ or LineTerminator \ EscapeSequence LineContinuation]
 
 LineContinuation 
     \ LineTerminatorSequence
@@ -169,11 +272,11 @@ CharacterEscapeSequence
     SingleEscapeCharacter
     NonEscapeCharacter
 
-SingleEscapeCharacter  [one of]
+SingleEscapeCharacter [one of]
     ' " \ b f n r t v
 
 NonEscapeCharacter 
-    SourceCharacter but not [one of] EscapeCharacter or LineTerminator
+    SourceCharacter [but not one of EscapeCharacter or LineTerminator]
 
 EscapeCharacter 
     SingleEscapeCharacter DecimalDigit x u
@@ -195,11 +298,11 @@ RegularExpressionChars
     RegularExpressionChars RegularExpressionChar
 
 RegularExpressionFirstChar 
-    RegularExpressionNonTerminator but not [one of] * or \ or / or [ 
+    RegularExpressionNonTerminator [but not one of * or \ or / or []
     RegularExpressionBackslashSequence RegularExpressionClass
 
 RegularExpressionChar 
-    RegularExpressionNonTerminator but not [one of] \ or / or [
+    RegularExpressionNonTerminator [but not one of \ or / or []
     RegularExpressionBackslashSequence
     RegularExpressionClass
 
@@ -217,14 +320,14 @@ RegularExpressionClassChars
     RegularExpressionClassChars RegularExpressionClassChar
 
 RegularExpressionClassChar 
-    RegularExpressionNonTerminator but not [one of] ] or \
+    RegularExpressionNonTerminator [but not one of ] or \]
     RegularExpressionBackslashSequence
 
 RegularExpressionFlags 
     [empty]
     RegularExpressionFlags IdentifierPart
 
-SYNTACTIC GRAMMAR
+EXPRESSIONS
 
 PrimaryExpression 
     this
@@ -253,15 +356,15 @@ ArrayInitialiser
     ArrayComprehension
 
 ArrayLiteral 
-    [ Elisionopt ]
+    [ ElisionOpt ]
     [ ElementList ]
-    [ ElementList , Elisionopt ]
+    [ ElementList , ElisionOpt ]
 
 ElementList 
-    Elisionopt AssignmentExpression
-    Elisionopt … AssignmentExpression
-    ElementList , Elisionopt AssignmentExpression
-    ElementList , Elisionopt SpreadElement
+    ElisionOpt AssignmentExpression
+    ElisionOpt … AssignmentExpression
+    ElementList , ElisionOpt AssignmentExpression
+    ElementList , ElisionOpt SpreadElement
 
 Elision 
     ,
@@ -472,7 +575,7 @@ AssignmentExpressionNoIn
     LeftHandSideExpression = AssignmentExpressionNoIn
     LeftHandSideExpression AssignmentOperator AssignmentExpressionNoIn
 
-AssignmentOperator  [one of]
+AssignmentOperator [one of]
     *=
     /=
     %=
@@ -494,24 +597,24 @@ ObjectAssignmentPattern
     { AssignmentPropertyList , }
 
 ArrayAssignmentPattern 
-    [ Elisionopt AssignmentRestElementopt ]
+    [ ElisionOpt AssignmentRestElementOpt ]
     [ AssignmentElementList ]
-    [ AssignmentElementList , Elisionopt AssignmentRestElementopt ]
+    [ AssignmentElementList , ElisionOpt AssignmentRestElementOpt ]
 
 AssignmentPropertyList 
     AssignmentProperty
     AssignmentPropertyList , AssignmentProperty
 
 AssignmentElementList 
-    Elisionopt AssignmentElement
-    AssignmentElementList , Elisionopt AssignmentElement
+    ElisionOpt AssignmentElement
+    AssignmentElementList , ElisionOpt AssignmentElement
 
 AssignmentProperty 
-    Identifier Initialiseropt
+    Identifier InitialiserOpt
     PropertyName  AssignmentElement
 
 AssignmentElement 
-    LeftHandSideExpression Initialiseropt
+    LeftHandSideExpression InitialiserOpt
 
 AssignmentRestElement 
     … LeftHandSideExpression
@@ -523,4 +626,309 @@ Expression
 ExpressionNoIn 
     AssignmentExpressionNoIn
     ExpressionNoIn , AssignmentExpressionNoIn
+
+STATEMENTS AND DECARATIONS
+
+Statement 
+    BlockStatement
+    VariableStatement
+    EmptyStatement
+    ExpressionStatement
+    IfStatement
+    BreakableStatement
+    ContinueStatement
+    BreakStatement
+    ReturnStatement
+    WithStatement
+    LabelledStatement
+    ThrowStatement
+    TryStatement
+    DebuggerStatement
+
+Declaration 
+    FunctionDeclaration
+    GeneratorDeclaration
+    ClassDeclaration
+    LexicalDeclaration
+
+BreakableStatement 
+    IterationStatement
+    SwitchStatement
+
+BlockStatement 
+    Block
+
+Block 
+    { StatementListOpt }
+
+StatementList 
+    StatementListItem
+    StatementList StatementListItem
+
+StatementListItem 
+    Statement Declaration
+
+LexicalDeclaration 
+    LetOrConst BindingList ;
+
+LexicalDeclarationNoIn 
+    LetOrConst BindingListNoIn
+
+LetOrConst 
+    let const
+
+BindingList 
+    LexicalBinding BindingList , LexicalBinding
+
+BindingListNoIn 
+    LexicalBindingNoIn BindingListNoIn , LexicalBindingNoIn
+
+LexicalBinding 
+    BindingIdentifier InitialiserOpt BindingPattern Initialiser
+
+LexicalBindingNoIn 
+    BindingIdentifier InitialiserNoInOpt BindingPattern InitialiserNoIn
+
+BindingIdentifier 
+    Identifier
+
+Initialiser 
+    = AssignmentExpression
+
+InitialiserNoIn 
+    = AssignmentExpressionNoIn
+
+VariableStatement 
+    var VariableDeclarationList ;
+
+VariableDeclarationList 
+    VariableDeclaration
+    VariableDeclarationList , VariableDeclaration
+
+VariableDeclarationListNoIn 
+    VariableDeclarationNoIn
+    VariableDeclarationListNoIn , VariableDeclarationNoIn
+
+VariableDeclaration 
+    BindingIdentifier InitialiserOpt
+    BindingPattern Initialiser
+
+VariableDeclarationNoIn 
+    BindingIdentifier InitialiserNoInOpt
+    BindingPattern InitialiserNoIn
+
+BindingPattern 
+    ObjectBindingPattern
+    ArrayBindingPattern
+
+ObjectBindingPattern 
+    { }
+    { BindingPropertyList }
+    { BindingPropertyList , }
+
+ArrayBindingPattern 
+    [ ElisionOpt BindingRestElementOpt ]
+    [ BindingElementList ]
+    [ BindingElementList , ElisionOpt BindingRestElementOpt ]
+
+BindingPropertyList 
+    BindingProperty
+    BindingPropertyList , BindingProperty
+
+BindingElementList 
+    ElisionOpt BindingElement
+    BindingElementList , ElisionOpt BindingElement
+
+BindingProperty 
+    SingleNameBinding
+    PropertyName : BindingElement
+
+BindingElement 
+    SingleNameBinding
+    BindingPattern InitialiserOpt
+
+SingleNameBinding 
+    BindingIdentifier InitialiserOpt
+
+BindingRestElement 
+    … BindingIdentifier
+
+EmptyStatement 
+    ;
+
+ExpressionStatement 
+    [lookahead not { {, function, class }] Expression ;
+
+IfStatement 
+    if ( Expression ) Statement else Statement
+    if ( Expression ) Statement
+
+IterationStatement 
+    do Statement while ( Expression )
+    while ( Expression ) Statement
+    for (ExpressionNoInOpt; ExpressionOpt ; ExpressionOpt ) Statement
+    for ( var VariableDeclarationListNoIn; ExpressionOpt ; ExpressionOpt ) Statement
+    for ( LexicalDeclarationNoIn; ExpressionOpt ; ExpressionOpt ) Statement
+    for ( LeftHandSideExpression in Expression ) Statement
+    for ( var ForBinding in Expression ) Statement
+    for ( ForDeclaration in Expression ) Statement
+    for ( LeftHandSideExpression of Expression ) Statement
+    for ( var ForBinding of Expression ) Statement
+    for ( ForDeclaration of Expression ) Statement
+
+ForDeclaration 
+    LetOrConst ForBinding
+
+ContinueStatement 
+    continue ;
+    continue [no LineTerminator here] Identifier ;
+
+BreakStatement 
+    break ;
+    break [no LineTerminator here] Identifier ;
+
+ReturnStatement 
+    return ;
+    return [no LineTerminator here] Expression ;
+
+WithStatement 
+    with ( Expression ) Statement
+
+SwitchStatement 
+    switch ( Expression ) CaseBlock
+
+CaseBlock 
+    { CaseClausesOpt }
+    { CaseClausesOpt DefaultClause CaseClausesOpt }
+
+CaseClauses 
+    CaseClause
+    CaseClauses CaseClause
+
+CaseClause 
+    case Expression : StatementListOpt
+
+DefaultClause 
+    default : StatementListOpt
+
+LabelledStatement 
+    Identifier : Statement
+
+ThrowStatement 
+    throw [no LineTerminator here] Expression ;
+
+TryStatement 
+    try Block Catch
+    try Block Finally
+    try Block Catch Finally
+
+Catch 
+    catch ( CatchParameter ) Block
+
+Finally 
+    finally Block
+
+CatchParameter 
+    BindingIdentifier BindingPattern
+
+DebuggerStatement 
+    debugger ;
+
+FunctionDeclaration :
+    function BindingIdentifier ( FormalParameterList ) { FunctionBody }
+
+FunctionExpression :
+    function BindingIdentifieropt ( FormalParameterList ) { FunctionBody }
+
+FormalParameterList :
+    [empty]
+    FunctionRestParameter
+    FormalsList
+    FormalsList, FunctionRestParameter
+
+FormalsList :
+    FormalParameter
+    FormalsList , FormalParameter
+
+FunctionRestParameter :
+    ... BindingIdentifier
+
+FormalParameter :
+    BindingElement
+
+FunctionBody :
+    StatementListopt
+
+ArrowFunction :
+    ArrowParameters => ConciseBody
+
+ArrowParameters :
+    BindingIdentifer
+    ( ArrowFormalParameterList )
+
+ArrowFormalParameterList :
+    [empty]
+    FunctionRestParameter
+    CoverFormalsList
+    CoverFormalsList , FunctionRestParameter
+
+ConciseBody :
+    [lookahead not { { }] AssignmentExpression { FunctionBody }
+
+CoverFormalsList :
+    Expression
+
+ArrowFormalParameterList :
+    FormalParameterList
+
+MethodDefinition :
+    PropertyName ( FormalParameterList ) { FunctionBody }
+    * PropertyName ( FormalParameterList ) { FunctionBody }
+    get PropertyName ( ) { FunctionBody }
+    set PropertyName ( PropertySetParameterList ) { FunctionBody }
+
+PropertySetParameterList :
+    BindingIdentifier
+    BindingPattern
+
+GeneratorDeclaration :
+    function * BindingIdentifier ( FormalParameterList ) { FunctionBody }
+
+GeneratorExpression :
+    function * BindingIdentifieropt ( FormalParameterList ) { FunctionBody }
+
+YieldExpression :
+    yield YieldDelegatoropt AssignmentExpression
+
+YieldDelegator :
+    *
+
+ClassDeclaration:
+    class BindingIdentifier ClassTail
+
+ClassExpression :
+    class BindingIdentifieropt ClassTail
+
+ClassTail :
+    ClassHeritageopt { ClassBodyopt }
+
+ClassHeritage:
+    extends AssignmentExpression
+
+ClassBody :
+    ClassElementList
+
+ClassElementList :
+    ClassElement ClassElementList ClassElement
+
+ClassElement :
+    MethodDefinition ;
+
+PROGRAMS
+
+Program :
+    ProgramBodyopt
+
+ProgramBody :
+    StatementList
 
