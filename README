@@ -1,7 +1,9 @@
 OVERVIEW
 
-L7 is a language with ECMAScript 6 syntax and AST construction semantics. It tracks the latest ES6
-spec posted here: http://wiki.ecmascript.org/doku.php?id=harmony:specification_drafts
+L7 is a language with ECMAScript 6 syntax and AST construction semantics. 
+It tracks the latest ES6 spec posted here: 
+    
+    http://wiki.ecmascript.org/doku.php?id=harmony:specification_drafts
 
 L7 is written in L0. 
 
@@ -33,7 +35,7 @@ or
 where avmshell is the name of a recent build of Tamarin.
 
 
-These produce the file:
+These produces the file:
 
     some.source.es6.ast
 
