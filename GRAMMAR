@@ -834,101 +834,202 @@ CatchParameter
 DebuggerStatement 
     debugger ;
 
-FunctionDeclaration :
+FunctionDeclaration 
     function BindingIdentifier ( FormalParameterList ) { FunctionBody }
 
-FunctionExpression :
+FunctionExpression 
     function BindingIdentifieropt ( FormalParameterList ) { FunctionBody }
 
-FormalParameterList :
+FormalParameterList 
     [empty]
     FunctionRestParameter
     FormalsList
     FormalsList, FunctionRestParameter
 
-FormalsList :
+FormalsList 
     FormalParameter
     FormalsList , FormalParameter
 
-FunctionRestParameter :
+FunctionRestParameter 
     ... BindingIdentifier
 
-FormalParameter :
+FormalParameter 
     BindingElement
 
-FunctionBody :
+FunctionBody 
     StatementListopt
 
-ArrowFunction :
+ArrowFunction 
     ArrowParameters => ConciseBody
 
-ArrowParameters :
+ArrowParameters 
     BindingIdentifer
     ( ArrowFormalParameterList )
 
-ArrowFormalParameterList :
+ArrowFormalParameterList 
     [empty]
     FunctionRestParameter
     CoverFormalsList
     CoverFormalsList , FunctionRestParameter
 
-ConciseBody :
+ConciseBody 
     [lookahead not { { }] AssignmentExpression { FunctionBody }
 
-CoverFormalsList :
+CoverFormalsList 
     Expression
 
-ArrowFormalParameterList :
+ArrowFormalParameterList 
     FormalParameterList
 
-MethodDefinition :
+MethodDefinition 
     PropertyName ( FormalParameterList ) { FunctionBody }
     * PropertyName ( FormalParameterList ) { FunctionBody }
     get PropertyName ( ) { FunctionBody }
     set PropertyName ( PropertySetParameterList ) { FunctionBody }
 
-PropertySetParameterList :
+PropertySetParameterList 
     BindingIdentifier
     BindingPattern
 
-GeneratorDeclaration :
+GeneratorDeclaration 
     function * BindingIdentifier ( FormalParameterList ) { FunctionBody }
 
-GeneratorExpression :
+GeneratorExpression 
     function * BindingIdentifieropt ( FormalParameterList ) { FunctionBody }
 
-YieldExpression :
+YieldExpression 
     yield YieldDelegatoropt AssignmentExpression
 
-YieldDelegator :
+YieldDelegator 
     *
 
-ClassDeclaration:
+ClassDeclaration
     class BindingIdentifier ClassTail
 
-ClassExpression :
+ClassExpression 
     class BindingIdentifieropt ClassTail
 
-ClassTail :
+ClassTail 
     ClassHeritageopt { ClassBodyopt }
 
-ClassHeritage:
+ClassHeritage
     extends AssignmentExpression
 
-ClassBody :
+ClassBody 
     ClassElementList
 
-ClassElementList :
+ClassElementList 
     ClassElement ClassElementList ClassElement
 
-ClassElement :
+ClassElement 
     MethodDefinition ;
 
 PROGRAMS
 
-Program :
-    ProgramBodyopt
+Program
+    ProgramElementList
 
-ProgramBody :
-    StatementList
+ProgramElementList
+    [empty]
+    ProgramElementList ProgramElement
+
+ProgramElement
+    Statement
+    FunctionDeclaration
+    GeneratorDeclaration
+    ClassDeclaration
+    LexicalDeclaration
+    ImportDeclaration
+    ModuleDeclaration
+
+ImportDeclaration
+    import ModuleImportList ;
+    import ImportSpecifierSet from ModuleSpecifier ";"
+
+ModuleImportList
+    ModuleImport
+    ModuleImport , ModuleImportList
+
+ModuleImport
+    StringLiteral as Identifier
+
+ModuleDeclaration
+    module [NoNewline] Identifier = Path ;
+    module [NoNewline] Identifier { ModuleBody }
+
+ModuleBody
+    ModuleElementList
+
+ModuleElementList
+    [empty]
+    ModuleElementList ModuleElement
+
+ModuleElement
+    Statement
+    VariableDeclaration
+    FunctionDeclaration
+    ModuleDeclaration
+    ImportDeclaration
+    ExportDeclaration
+
+ExportDeclaration
+    export ExportSpecifierSetList ;
+    export VariableDeclaration
+    export FunctionDeclaration
+    export ModuleDeclaration
+ 
+ExportSpecifierSetList
+    ExportSpecifierSet
+    ExportSpecifierSet , ExportSpecifierSetList
+
+ExportSpecifierSet
+    { ExportSpecifierList }
+    Identifier
+    * 
+    * from Path
+
+ExportSpecifierList
+    ExportSpecifier
+    ExportSpecifier , ExportSpecifierList
+
+ExportSpecifier
+    Identifier
+    Identifier : Path
+
+Path
+    Identifier
+    Identifier . Path
+
+ImportSpecifierSet
+    Identifier
+    *
+    { ImportSpecifierList }
+
+ImportSpecifierList
+    ImportSpecifier
+    ImportSpecifier , ImportSpecifierList
+
+ImportSpecifier
+    Identifier
+    Identifier : Identifier
+
+ModuleSpecifier
+    StringLiteral
+    Path
+
+
+
+[[
+Variant B: "module =" syntax
+
+This variant of the syntax for loading modules makes a stronger distinction between importing from the exports of a module and loading an external module by using import for the former and module for the latter.
+
+ImportDeclaration ::= "import" ImportSpecifierSet "from" ModuleSpecifier ";"
+
+ModuleDeclaration ::= "module" [NoNewline] Identifier "=" ModuleSpecifier ";"
+                   |  "module" [NoNewline] Identifier "{" ModuleBody "}"
+
+]]
+
+
 
