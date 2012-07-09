@@ -839,17 +839,10 @@ final class Scanner
                     break bigswitch;
                 }
             case 111: /* Char::o */
-                if (src.charCodeAt(curIndex+0) == 118 /* Char::v */ &&
-                    src.charCodeAt(curIndex+1) == 101 /* Char::e */ &&
-                    src.charCodeAt(curIndex+2) == 114 /* Char::r */ &&
-                    src.charCodeAt(curIndex+3) == 114 /* Char::r */ &&
-                    src.charCodeAt(curIndex+4) == 105 /* Char::i */ &&
-                    src.charCodeAt(curIndex+5) == 100 /* Char::d */ &&
-                    src.charCodeAt(curIndex+6) == 101 /* Char::e */ &&
-                    (!ESC::flags.es3_keywords &&
-                     notPartOfIdent[src.charCodeAt(curIndex+7)])) {
-                    curIndex += 7;
-                    return Token::Override;
+                if (src.charCodeAt(curIndex+0) == 102 /* Char::f */ &&
+                    notPartOfIdent[src.charCodeAt(curIndex+1)]) {
+                    curIndex += 1;
+                    return Token::Of;
                 }
                 break bigswitch;
             case 114: /* Char::r */
@@ -1023,6 +1016,8 @@ final class Scanner
                     return Token::Yield;
                 }
                 break bigswitch;
+
+
 
                 // End generated code
 

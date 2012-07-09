@@ -39,13 +39,55 @@
 use default namespace Ast,
     namespace Ast;
 
+/*
+ * EXPR POOL
+ */
+
+class ExprPool {
+    var map = { }
+    var exprs = [ ]
+    var nodePool = { }
+    function intern(key) {
+        let nid
+        if (key in map) {
+            nid = map[key]
+        }
+        else {
+            nid = exprs.length
+            map[key] = nid
+            exprs.push(key)
+            nodePool["N"+nid] = key
+        }
+        //print(key+"-->"+nid)
+        return nid
+    }
+
+    function dump() {
+        print("ExprPool.dump() exprs.length="+exprs.length)
+        let str = ""
+        for (let i = 0; i < exprs.length; i++) {
+            str += "\n" + i + ": " + exprs[i]
+        }
+        return str
+    }
+
+}
+
+
+
+
+
+
 interface Serializable {
     function serialize(s);
 }
 
 class ASTNode {
-    public function toString()
-        (new Serializer(true)).serialize(this);
+    public function toString() {
+        let s = new Serializer(true)
+        s.serialize(this);
+        s.pool.dump()
+    }
 
     function str()
         "expr"
@@ -161,7 +203,8 @@ class Name extends ASTNode implements Serializable {
     function Name(ns, id, tokens) : ns=ns, id=id, tokens=tokens {}
      
     function serialize(s)
-        s.sClass(this, "Name", "ns", "id");
+        //s.sClass(this, "Name", "ns", "id");
+        s.sClass(this, "Name", "id");
 
     override function toks()
         tokens
@@ -222,7 +265,7 @@ class PublicNamespace extends ASTNode implements Ast::Namespace, Serializable {
     function hash () { return "public " + name; }
 
     function serialize(s)
-        s.sClass(this, "PublicNamespace", "name");
+        "" //s.sClass(this, "PublicNamespace", "name");
 }
 
 class InternalNamespace extends ASTNode implements Ast::Namespace, Serializable {
@@ -267,7 +310,7 @@ final class NamespaceSet extends ASTNode implements Serializable {
     function NamespaceSet(ns, link) : ns=ns, link=link {}
 
     function serialize(s)
-        s.sClass(this, "NamespaceSet", "ns", "link");
+        "" //s.sClass(this, "NamespaceSet", "ns", "link");
 }
 
 final class NamespaceSetList extends ASTNode implements Serializable {
@@ -293,9 +336,7 @@ const publicNSSL = new Ast::NamespaceSetList(new Ast::NamespaceSet(publicNS, nul
 
 type BINTYOP = int;
 
-const castOp = 0;
 const isOp = 1;
-const likeOp = 2;
 
 // Binary arithmetic and logical operators
 
@@ -438,7 +479,7 @@ class BinaryExpr extends Expr implements Serializable {
     function BinaryExpr (op,e1,e2) : op=op, e1=e1, e2=e2 {}
 
     function serialize(s)
-        s.sClass(this, "BinaryExpr", "op", "e1", "e2");
+        s.sClass(this, "BinaryExpr", "op", "e1", "e2")
 
     override function intern(pool) {
         let e = ["BinaryExpr"]
@@ -491,16 +532,6 @@ class UnaryExpr extends Expr implements Serializable {
     override function toks()
         e1.toks()
 
-}
-
-// FIXME: ex => expr
-
-class TypeOpExpr extends Expr implements Serializable {
-    const ex : TypeExpr;
-    function TypeOpExpr (ex) : ex=ex {}
-
-    function serialize(s)
-        s.sClass(this, "TypeOpExpr", "ex");
 }
 
 class ThisExpr extends Expr implements Serializable {
@@ -610,19 +641,6 @@ class LetExpr extends Expr implements Serializable {
 
     function serialize(s)
         s.sClass(this, "LetExpr", "head", "expr");
-}
-
-class DynamicOverrideExpr extends Expr implements Serializable {
-    const names: [...IdentExpr];
-    const exprs: [...Expr];
-    const body : Expr;
-    function DynamicOverrideExpr (names, exprs, body)
-        : names=names
-        , exprs=exprs
-        , body=body {}
-
-    function serialize(s)
-        s.sClass(this, "DynamicOverrideExpr", "names", "exprs", "body");
 }
 
 class NewExpr extends Expr implements Serializable {
@@ -915,7 +933,8 @@ class Identifier extends Expr implements IdentExpr, Serializable {
         , super(pos) {}
 
     function serialize(s)
-        s.sClass(this, "Identifier", "ident", "nss", "tokens");
+        //s.sClass(this, "Identifier", "ident", "nss", "tokens");
+        s.sClass(this, "Identifier", "ident");
 
     override function str()
         ident
@@ -1030,7 +1049,7 @@ class LiteralInt extends Expr implements LiteralExpr, Serializable {
         , super(pos) {}
 
     function serialize(s)
-        s.sClass(this, "LiteralInt", "intValue");
+        s.sClass(this, "LiteralInt", "intValue")
 
     override function intern(pool) {
         let e = ["LiteralInt"]
@@ -1375,7 +1394,8 @@ type FUNC_NAME_KIND = int;
 const ordinaryFunction = 0;
 const getterFunction = 1;
 const setterFunction = 2;
-const staticInitFunction = 3;
+const methodFunction = 3;
+const staticInitFunction = 4;
 
 class FuncName extends ASTNode implements Serializable {
     const kind: FUNC_NAME_KIND;
@@ -1556,7 +1576,7 @@ class NamespaceFixture extends ASTNode implements FixtureData, Serializable {
         : ns = ns {}
 
     function serialize(s)
-        s.sClass(this, "NamespaceFixture", "ns");
+        "" //s.sClass(this, "NamespaceFixture", "ns");
 }
 
 internal class FixtureFwd extends ASTNode implements FixtureData {
@@ -1833,14 +1853,6 @@ class InstanceType extends ASTNode implements TypeExpr, Serializable {
 
     function serialize(s)
         s.sClass(this, "InstanceType", "name", "typeParams", "ty", "isDynamic");
-}
-
-class LikeType extends ASTNode implements Serializable {
-    const ty: TypeExpr;
-    function LikeType(ty) : ty=ty {}
-
-    function serialize(s)
-        s.sClass(this, "LikeType", "ty");
 }
 
 interface Stmt {
@@ -2151,7 +2163,8 @@ class Program extends ASTNode implements Serializable {
         , file = file {}
 
     function serialize(s)
-        s.sClass(this, "Program", "body", "head", "attr", "file");
+        //s.sClass(this, "Program", "body", "head", "attr", "file");
+        s.sClass(this, "Program", "body");
 }
 
 /* Helper tables */
@@ -2170,8 +2183,6 @@ tokenToOperator[Token::GreaterThanOrEqual] = Ast::greaterOrEqualOp;
 tokenToOperator[Token::In] = Ast::inOp;
 tokenToOperator[Token::InstanceOf] = Ast::instanceOfOp;
 tokenToOperator[Token::Is] = Ast::isOp;
-tokenToOperator[Token::Cast] = Ast::castOp;
-tokenToOperator[Token::Like] = Ast::likeOp;
 tokenToOperator[Token::LeftShift] = Ast::leftShiftOp;
 tokenToOperator[Token::RightShift] = Ast::rightShiftOp;
 tokenToOperator[Token::UnsignedRightShift] = Ast::rightShiftUnsignedOp;
@@ -2217,7 +2228,11 @@ class Serializer {
 
     var compact;
 
-    public function Serializer(compact=false) : compact=compact {}
+    public var pool;
+    public function Serializer(compact=false) : compact=compact {
+        print("new Serializer")
+        pool = new ExprPool();
+    }
 
     public function serialize(obj) {
         if (obj is Serializable)
@@ -2299,15 +2314,18 @@ class Serializer {
         let sep1 = compact ? "," : "\n, ";
         let s = "";
         if (compact)
-            s += "{/*" + rest[0] + "*/ ";
+            //s += "{\/*" + rest[0] + "*\/ ";
+            s += "{ 'tag': '" + rest[0] + "',";
         else
             s += "{ 'ast_layout': " + serializeArray(rest, false);
+
         for ( let i=1, limit=rest.length ; i < limit ; i++ ) {
-            s += (i > 1 ? sep1 : sep0) + "'" + rest[i] + "': ";
+            s += (i > 1 ? sep1 : sep0) + " '" + rest[i] + "': ";
             s += serialize(obj[rest[i]]);
         }
+
         s += "}";
-        return s;
+        return pool.intern(s);
     }
 
     public function sConstant(expr)

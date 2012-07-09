@@ -1,3 +1,3 @@
-function f(one, two, three) {
-    return one+two+three
-}
+( 
+    [ x for (x of [1, 2, 3 ]) ]
+)

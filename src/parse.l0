@@ -493,7 +493,7 @@ final class Parser
             let fxtrs, exprs, expr;
             switch type (p) {
             case (p:IdentifierPattern) {
-                let nm = new Ast::PropName (new Ast::Name(ns, p.ident, p.tokens));
+                let nm = new Ast::Name(ns, p.ident, p.tokens);
                 let fx = new Ast::ValFixture (t, ro);
                 fxtrs = [new Ast::Fixture(nm, fx)];
                 let inits = (e !== null) ? ([new Ast::InitBinding(nm, e)]) : []; // FIXME (fix what??)
@@ -554,7 +554,7 @@ final class Parser
 
     // Parse rountines
 
-    function identifier () : Ast::IDENT {
+    function identifier() : Ast::IDENT {
         if (hd() == Token::Identifier)
             return let (str = lexeme()) next(), str;
         Parse::syntaxError(this, "Expecting identifier, found " + lexeme().text);
@@ -566,44 +566,21 @@ final class Parser
         Parse::syntaxError(this, "Expecting identifier or reserved word, found " + lexeme().text);
     }
   
-    // Returns IdentExpr or LiteralString, consumer should cope.
-    function namespaceExpression() {
-        if (hd() == Token::StringLiteral)
-            return let (expr = new Ast::LiteralString (lexeme(), position())) next(), expr;
-        let name = nameExpression();
-        if (!(name is Ast::IdentExpr))
-            Parse::syntaxError(this, "Qualified name or identifier required, found " + name);
-        return name;
-    }
-
     function nameExpression(): Ast::IdentExpr {
         let name;
 
         let pos = position();
-        if (hd() == Token::StringLiteral)
-            name = let (s = new Ast::LiteralString(lexeme(), pos)) next(), s;
-        else if (hd() == Token::Identifier) 
+        if (hd() == Token::Identifier) 
             name = makeIdentifier(identifier(), cx.getOpenNamespaces(), pos, [lastToken()]);
         else
             Parse::syntaxError(this, "String or identifier required, found " + lexeme().text);
 
-        // Excludes slice expression shorthands.  Messy!
-        while (hd() == Token::DoubleColon && hd2() != Token::RightBracket) {
-            eat(Token::DoubleColon);
-            // Technically the resolution here is necessary, and when we clean up
-            // namespaces we can't do without.  Right now, it slows down parsing
-            // by a factor of 2, but namespace search can be made more clever
-            // to fix that.
-            pos = position();
-            name = new Ast::QualifiedIdentifier(cx.resolveNamespaceExpr(name), propertyIdentifier(), pos);
-        }
-
         return name;
     }
 
-    function parenExpression () : Ast::Expr {
+    function parenExpression() : Ast::Expr {
         eat (Token::LeftParen);
-        let expr = fullCommaExpression ();
+        let expr = fullCommaExpression();
         eat (Token::RightParen);
 
         return expr;
@@ -628,11 +605,10 @@ final class Parser
     }
 
     function objectInitializer () : Ast::TypeExpr {
-        let [var_prefix, const_prefix] = initializerAttribute();
         let pos = position();             // Record source location of initial left brace
         let start = lastToken()
         eat (Token::LeftBrace);
-        let fields = fieldList (var_prefix, const_prefix);
+        let fields = propertyDefinitionList();
         eat (Token::RightBrace);
         let end = lastToken()
 
@@ -661,51 +637,41 @@ final class Parser
         return new Ast::LiteralObject (fields, texpr, pos, start, end);
     }
 
-    function fieldList (var_prefix, const_prefix) : [(Ast::LiteralField | Ast::ProtoField | Ast::VirtualField)] {
+    function propertyDefinitionList() : [(Ast::LiteralField | Ast::ProtoField | Ast::VirtualField)] {
         let fields = [] : [(Ast::LiteralField | Ast::ProtoField | Ast::VirtualField)];
         if (hd () != Token::RightBrace) {
             do
-                fields.push (literalField(var_prefix, const_prefix));
+                fields.push(propertyDefinition());
             while (match(Token::Comma));
         }
         return fields;
     }
 
-    function literalField (var_prefix, const_prefix) : Ast::FieldType {
-        let [var_prefix2, const_prefix2] = initializerAttribute();
-
-        // SYNTACTIC CONDITION.  If there is a var or const prefix to
-        // the structure as a whole then there can't be one here.
-
-        if (var_prefix || const_prefix) {
-            if (var_prefix2 || const_prefix2)
-                Parse::syntaxError(this, "Redundant field prefix '" + (var_prefix2 ? "var" : "const") + "'");
-        }
-        else
-            [var_prefix,const_prefix] = [var_prefix2,const_prefix2];
+    function propertyDefinition() : Ast::FieldType {
 
         let tag = Ast::noTag;
-        if (var_prefix) tag = Ast::varTag;
-        if (const_prefix) tag = Ast::constTag;
 
-        if (match(Token::__Proto__)) {
-            match(Token::Colon);
-            let expr = fullAssignmentExpression();
-            return new Ast::ProtoField(expr);
+        // Catchall
+        if (hd() === Token::Mult) {
+            eat(Token::Mult)
+            let method = getterOrSetterFieldMaybe(tag, Ast::methodFunction);
+            if (method)
+                return method;
         }
-
-        let fn = fieldName();
-
-        if (fn is Ast::Identifier) {
-            if (fn.ident == Token::sym_get) {
-                let getter = getterOrSetterFieldMaybe(tag, Ast::getterFunction);
-                if (getter)
-                    return getter;
-            }
-            else if (fn.ident == Token::sym_set) {
-                let setter = getterOrSetterFieldMaybe(tag, Ast::setterFunction);
-                if (setter)
-                    return setter;
+        else {
+            let name = propertyName();
+            
+            if (name is Ast::Identifier) {
+                if (name.ident == Token::sym_get) {
+                    let getter = getterOrSetterFieldMaybe(tag, Ast::getterFunction);
+                    if (getter)
+                        return getter;
+                }
+                else if (name.ident == Token::sym_set) {
+                    let setter = getterOrSetterFieldMaybe(tag, Ast::setterFunction);
+                    if (setter)
+                        return setter;
+                }
             }
         }
 
@@ -719,22 +685,21 @@ final class Parser
         // probably move into the definer when the definer becomes
         // available.
 
-        let expr = match(Token::Colon) ? fullAssignmentExpression () : null;
+        let expr = match(Token::Colon) ? fullAssignmentExpression () : functionExpression(Ast::methodFunction);
 
-        return new Ast::LiteralField (tag, fn, expr, fn.toks());
+        return new Ast::LiteralField (tag, name, expr, name.toks());
     }
 
     function getterOrSetterFieldMaybe(tag, kind) {
         if (hd() == Token::Colon || hd() == Token::Comma || hd() == Token::RightBrace)
             return null;
 
-        let name = fieldName();
+        let name = propertyName();
         let fn = functionExpression(kind);
-
         return new Ast::VirtualField(tag, name, kind, fn);
     }
 
-    function fieldName () : Ast::IdentExpr {
+    function propertyName() : Ast::IdentExpr {
         switch (hd ()) {
         case Token::StringLiteral:
             if (hd2() == Token::DoubleColon)
@@ -748,9 +713,6 @@ final class Parser
         case Token::DoubleLiteral:
             return let (name = new Ast::Identifier(Token::intern(parseFloat(lexeme().text)), Ast::publicNSSL, 0, [lastToken()])) next(), name;
 
-        case Token::DecimalLiteral:
-            return let (name = new Ast::Identifier(Token::intern(new decimal(lexeme().text)), Ast::publicNSSL, 0, [lastToken()])) next(), name;
-
         default:
             if (Token::isReserved(hd ()))
                 return let (name = new Ast::Identifier(lexeme(), Ast::publicNSSL, 0, [lastToken()])) next(), name;
@@ -760,10 +722,9 @@ final class Parser
     }
 
     function arrayInitializer () : Ast::Expr {
-        let [var_prefix, const_prefix] = initializerAttribute();
         let pos = position();   // Record source location of initial left bracket
-        eat (Token::LeftBracket);
-        let [elts, spread] = elementList ();
+        eat(Token::LeftBracket);
+        let [elts, spread] = elementList();
 
         if (elts.length == 1 && spread == null && (hd() == Token::For || hd() == Token::Let || hd() == Token::If)) {
 
@@ -772,50 +733,55 @@ final class Parser
             // SYNTACTIC CONDITION: no name should be bound by more than one
             // comprehension clause.
 
-            let comp = comprehensionExpression();
+            let comp = comprehensionExpression(elts[0]);
             eat (Token::RightBracket);
-            let t = alpha==allowColon && match(Token::Colon) ? typeExpression () : Ast::anyType;
-            return new Ast::LiteralComprehension(elts[0], comp, t, pos);
+            return comp
         }
 
-        eat (Token::RightBracket);
-        let t = alpha==allowColon && match(Token::Colon) ? typeExpression () : Ast::anyType;
-        return new Ast::LiteralArray (elts, spread, t, pos);
+        eat(Token::RightBracket);
+        return new Ast::LiteralArray (elts, spread, pos);
     }
 
-    function comprehensionExpression() {
-        switch (hd()) {
-        case Token::RightBracket:
-            return null;
-        case Token::For: {
-            eat(Token::For);
-            let is_each = matchToken(Token::id_each);
-            eat(Token::LeftParen);
-            let [pattern, annotation] = dynamic override (beta=noIn) typedPattern();
-            let [fixtures,init] = desugarBindingPattern (pattern, annotation, null, cx.getDefaultNamespace(), null, false);
-            eat(Token::In);
-            let iterator = fullCommaExpression();
-            eat(Token::RightParen);
-            let subclause = comprehensionExpression();
-            return new Ast::ComprehendFor(is_each, new Ast::Head(fixtures, init), iterator, subclause);
-        }
-        case Token::Let: {
-            eat(Token::Let);
-            eat(Token::LeftParen);
-            let [fixtures, inits] = letBindingList();
-            eat(Token::RightParen);
-            let subclause = comprehensionExpression();
-            return new Ast::ComprehendLet(new Ast::Head(fixtures, inits), subclause);
-        }
-        case Token::If: {
+    function comprehensionExpression(expr) {
+        let forList = comprehensionForList()
+        let ifCond = null;
+        if (hd()===Token::If) {
             eat(Token::If);
-            let cond = parenExpression();
-            let subclause = comprehensionExpression();
-            return new Ast::ComprehendIf(cond, subclause);
+            let cond = fullCommaExpression();
+            ifCond = new Ast::ComprehendIf(cond);
         }
-        default:
-            Parse::syntaxError(this, "Expected 'for', 'let', 'if', or ']'; found " + lexeme().text);
+        return new Ast::LiteralComprehension(expr, forList, ifCond);
+    }
+
+    function comprehensionForList() {
+        let [head, iterator] = comprehensionForItem()
+        let subclause = null;
+        if (hd() === Token::For) {
+            subclause = comprehensionForList();
         }
+        return new Ast::ComprehendFor(head, iterator, subclause);
+    }
+
+    function comprehensionForItem() {
+        eat(Token::For);
+        eat(Token::LeftParen);
+        let [pattern, annotation] = dynamic override (beta=noIn) typedPattern();
+        let [fixtures,init] = desugarBindingPattern (pattern, annotation, null, cx.getDefaultNamespace(), null, false);
+        eat(Token::Of);
+        let iterator = fullCommaExpression();
+        eat(Token::RightParen);
+        return [new Ast::Head(fixtures, init), iterator]
+    }
+
+    function forBinding() {
+        let $1
+        if (hd()===Token::LeftBrace || hd()===Token::LeftBracket) {
+            $1 = bindingPattern()
+        }
+        else {
+            $1 = bindingIdentifier()
+        }
+        return $1
     }
 
     function elementList ()
@@ -866,14 +832,19 @@ final class Parser
             regexp();
 
         let pos = position();   // Record the source location before consuming the token
+
         switch (hd ()) {
+        case Token::This:
+            let offset = lastToken()
+            next();
+            return new Ast::ThisExpr(cx.getStrict(), [offset]);
+
         case Token::Null:
             return let (expr = new Ast::LiteralNull(pos, [lastToken()])) next(), expr;
 
         case Token::True:
         case Token::False:
             return let (expr = new Ast::LiteralBoolean(hd() == Token::True, pos, [lastToken()])) next(), expr;
-
         case Token::IntLiteral:
             return let (expr = new Ast::LiteralInt(parseInt(lexeme().text), pos)) next(), expr;
 
@@ -883,38 +854,18 @@ final class Parser
         case Token::DoubleLiteral:
             return let (expr = new Ast::LiteralDouble(parseFloat(lexeme().text), pos, [lastToken()])) next(), expr;
 
-        case Token::DecimalLiteral:
-            return let (expr = new Ast::LiteralDecimal(new decimal(lexeme().text), pos)) next(), expr;
-
-        case Token::StringLiteral:
+        case Token::StringLiteral: {
             let offset = lastToken()
             if (hd2() == Token::DoubleColon)
                 break;
             return let (expr = new Ast::LiteralString (lexeme(), pos,  [offset])) next(), expr;
+        }
 
         case Token::RegexpLiteral:
             return let (expr = new Ast::LiteralRegExp(lexeme(), pos)) next(), expr;
 
-        case Token::This:
-            let offset = lastToken()
-            next();
-            if (noNewline()) {
-                if (matchToken(Token::id_generator))
-                    return new Ast::ThisGeneratorExpr();
-                if (match(Token::Function))
-                    return new Ast::ThisFunctionExpr();
-            }
-            return new Ast::ThisExpr(cx.getStrict(), [offset]);
-
-        case Token::LeftParen: {
-            let e = parenExpression();
-            // Excludes slice expression shorthands.  Messy!
-            if (hd() == Token::DoubleColon && hd2() != Token::RightBracket) {
-                eat(Token::DoubleColon);
-                return new Ast::QualifiedIdentifier(e, propertyIdentifier());
-            }
-            return e;
-        }
+        case Token::LeftParen:
+            return parenExpression();
 
         case Token::Var:
         case Token::Const:
@@ -924,22 +875,19 @@ final class Parser
                 return objectInitializer();
             Parse::internalError(this, "Unexpected keyword here: " + lexeme().text);
 
-        case Token::Let:
-            return letExpression();
-
         case Token::LeftBracket:
-            return arrayInitializer ();
+            return arrayInitializer();
 
         case Token::LeftBrace:
-            return objectInitializer ();
+            return objectInitializer();
 
         case Token::Function:
             return functionExpression (Ast::ordinaryFunction);
 
         default:
-            break;
+            return nameExpression();
         }
-        return nameExpression();
+
     }
 
     function superExpression() {
@@ -1340,91 +1288,10 @@ final class Parser
         return new Ast::YieldExpr(expr);
     }
 
-    // Experimental extension: dynamically scoped binding.
-    //
-    // The values of the variables in the head are read and saved; the
-    // expressions are computed left-to-right yielding new values,
-    // then assigned left-to-right to the variables; the body
-    // expression is evaluated; the saved values are assigned
-    // left-to-right to the variables; and the result of the body
-    // expression is returned.  If the body expression throws an
-    // exception then the original values are restored to the
-    // variables but the exception is propagagated out of the
-    // expression.
-    //
-    // If a variable name has computable parts (eg o.x) then the
-    // computable parts are computed only once, but each variable is
-    // considered independently, that is, "o" is evaluated twice in
-    // the list (o.x=1, o.y=2).
-    // 
-    // If the expressions throw, or the reads or writes throw (because
-    // they are getter or setter call that throw, or because the code
-    // is strict and a property is read-only or missing, or for any
-    // other reason), then the dynamic override expression as a whole
-    // throws that exception, and the variables are left in the
-    // intermediate state they were in when the exception was thrown.
-    // That is, only the body of the form is protected by an exception
-    // handler.
-    //
-    //   "dynamic" "override" "(" NameExpression "=" AssignmentExpr "," ... ")" CommaExpression
-    //
-    // For example,
-    //
-    //   dynamic override (ns::x = E1, y = E2) ...
-    //
-    // (The ESC parser uses this form extensively for the grammar
-    // parameters; grep this file.)
-    //
-    // The syntax "dynamic override" is vile but was chosen because
-    //
-    //   * "let dynamic" isn't quite right -- all other let forms are
-    //     lexical scoping forms and bind only simple names, neither of
-    //     which is the case here
-    //
-    //   * "dynamic" or "override" by itself followed by leftparen is
-    //     syntactically ambiguous at the statement level (the leftparen
-    //     could introduce a namespace expression)
-    //
-    // FIXME: general patterns should be allowed on the lhs of the "=".
-    //
-    // FIXME: there are use cases for a statement form, mirroring
-    // let-block statements:
-    //
-    //        dynamic override (...) {
-    //          ...
-    //        }
-
-    function dynamicOverrideExpression() {
-        if (!ESC::flags.ext_dynamic_override)
-            Parse::syntaxError(this, "'dynamic override' not enabled.");
-        eat(Token::Dynamic);
-        eat(Token::Override);
-        eat(Token::LeftParen);
-        let names = [];
-        let exprs = [];
-        if (hd() != Token::RightParen) {
-            do {
-                names.push(nameExpression());
-                eat(Token::Assign);
-                exprs.push(fullAssignmentExpression());
-            } while (match(Token::Comma));
-        }
-        eat(Token::RightParen);
-        let body = commaExpression();
-        return new Ast::DynamicOverrideExpr(names, exprs, body);
-    }
-
     function nonAssignmentExpression () : Ast::Expr {
         switch (hd ()) {
         case Token::Yield:
             return yieldExpression ();
-
-        case Token::Dynamic:
-            return dynamicOverrideExpression ();
-
-        case Token::Type:
-            next();
-            return new Ast::TypeOpExpr(typeExpression ());
 
         default: {
             let expr = logicalOrExpression ();
@@ -1443,13 +1310,6 @@ final class Parser
         switch (hd ()) {
         case Token::Yield:
             return yieldExpression ();
-
-        case Token::Dynamic:
-            return dynamicOverrideExpression ();
-
-        case Token::Type:
-            next();
-            return new Ast::TypeOpExpr(typeExpression ());
 
         default: {
             let expr = logicalOrExpression ();
@@ -1591,8 +1451,6 @@ final class Parser
 
         if (match(Token::Colon)) 
             return [the_pattern, typeExpression ()];
-        if (match(Token::Like))
-            return [the_pattern, new Ast::LikeType(typeExpression())];
         return [the_pattern, Ast::anyType];
     }
 
@@ -1748,7 +1606,7 @@ final class Parser
         case Token::For:       return forStatement();
         case Token::If:        return ifStatement();
         case Token::Return:    return let (stmt = returnStatement()) semicolon(omega), stmt;
-        case Token::Switch:    return (hd2() == Token::Type) ? switchTypeStatement() : switchStatement();
+        case Token::Switch:    return switchStatement();
         case Token::Throw:     return let (stmt = throwStatement()) semicolon(omega), stmt;
         case Token::Try:       return tryStatement ();
         case Token::While:     return whileStatement();
@@ -2109,17 +1967,6 @@ final class Parser
         return new Ast::WithStmt (expr, body);
     }
 
-    function switchTypeStatement () : Ast::Stmt {
-        eat (Token::Switch);
-        eat (Token::Type);
-        let expr = parenExpression ();
-        eat (Token::LeftBrace);
-        let typecases = typeCases ();
-        eat (Token::RightBrace);
-
-        return new Ast::SwitchTypeStmt (expr,typecases);
-    }
-
     function typeCases () : [Ast::Catch] {
         let cases = [];
 
@@ -2198,6 +2045,7 @@ final class Parser
             Parse::syntaxError(this, "Destructuring pattern without initializer");
         else
             initializer = new Ast::LiteralUndefined();
+
         let [f,i] = desugarBindingPattern (pattern,annotation,initializer,ns,it,ro);
 
         Util::pushOnto(fixtures, f);
@@ -2241,12 +2089,12 @@ final class Parser
         if (strict)
             checkStrictFunction(func);
 
-        let name = new Ast::PropName (new Ast::Name(attrs.ns, name.ident, tokens));
+        let name = new Ast::Name(attrs.ns, name.ident, tokens);
         let fxtr = new Ast::MethodFixture (func, Ast::anyType, true, attrs.override, attrs.final);
         cx.addFixture(tau == localBlk ? Ast::letInit : Ast::varInit, name, fxtr, attrs.static);
     }
 
-    function functionExpression (kind) : Ast::Expr {
+    function functionExpression(kind) : Ast::Expr {
         let name = null;
         let signature;
         let pos = position();
@@ -2267,6 +2115,7 @@ final class Parser
             break;
         case Ast::getterFunction:
         case Ast::setterFunction:
+        case Ast::methodFunction:
             signature = functionSignature(kind);
             break;
         }
@@ -2473,6 +2322,7 @@ final class Parser
         let restype = null;
         switch (kind) {
         case Ast::ordinaryFunction:
+        case Ast::methodFunction:
         case Ast::getterFunction:
             restype = resultTypeOrLike();
             break;
@@ -2641,8 +2491,6 @@ final class Parser
                 return Ast::voidType;
             return typeExpression ();
         }
-        if (match(Token::Like))
-            return new Ast::LikeType(typeExpression());
         return Ast::anyType;
     }
 
@@ -2689,11 +2537,11 @@ final class Parser
             cx.pushNamespace(protectedNs);
             cx.pushNamespace(privateNs);
             cx.addFixture(Ast::varInit,
-                          new Ast::PropName(new Ast::Name(privateNs, Token::sym_private, [])),
+                          new Ast::Name(privateNs, Token::sym_private, []),
                           new Ast::NamespaceFixture(privateNs),
                           true);
             cx.addFixture(Ast::varInit,
-                          new Ast::PropName(new Ast::Name(privateNs, Token::sym_protected, [])),
+                          new Ast::Name(privateNs, Token::sym_protected, []),
                           new Ast::NamespaceFixture(protectedNs),
                           true);
 
@@ -2734,44 +2582,7 @@ final class Parser
             semicolon(fullStmt);
             fx = new Ast::ClassFixtureFwd(typeformals, nonnullable);
         }
-        cx.addFixture(Ast::varInit, new Ast::PropName(cname), fx);
-    }
-
-    function interfaceDefinitionOrDeclaration(attrs): void {
-        eat (Token::Interface);
-            
-        let interfaceid = identifier ();
-        let iname = new Ast::Name(attrs.ns, interfaceid, [lastToken()]);
-        let [typeformals, nonnullable] = typeSignature ();
-        let superinterfaces = interfaceList(Token::id_extends);
-        let fx;
-
-        // LANGUAGE BUG.  It may be useful for interfaces to be
-        // declared nonnullable (all implementing classes must be
-        // nonnullable) or nullable (all implementing classes must be
-        // nullable).
-
-        if (nonnullable)
-            Parse::syntaxError(this, "Interfaces may not carry nullability annotations");
-
-        if (superinterfaces.length != 0 || hd() == Token::LeftBrace) {
-            currentClassName = Token::sym_EMPTY;
-
-            cx.enterClassInstance();
-            eat(Token::LeftBrace);
-            directivesInterface();
-            eat(Token::RightBrace);
-            let ihead = cx.exitClassInstance();
-
-            let iface = new Ast::Interface(iname, typeformals, superinterfaces, ihead);
-
-            fx = new Ast::InterfaceFixture (iface);
-        }
-        else {
-            semicolon(fullStmt);
-            fx = new Ast::InterfaceFixtureFwd (typeformals);
-        }
-        cx.addFixture(Ast::varInit, new Ast::PropName(iname), fx);
+        cx.addFixture(Ast::varInit, cname, fx);
     }
 
     function makeDefaultCtor(classname) {
@@ -2842,7 +2653,7 @@ final class Parser
         else 
             nsVal = new Ast::ForgeableNamespace (initializer);
 
-        let fxname = new Ast::PropName (new Ast::Name(attrs.ns, name, [lastToken()]));
+        let fxname = new Ast::Name(attrs.ns, name, [lastToken()]);
         let fxtr = new Ast::NamespaceFixture (nsVal);
         cx.addFixture(Ast::varInit, fxname, fxtr, attrs.static);
     }
@@ -2853,22 +2664,6 @@ final class Parser
 
     function getAnonymousName (seedStr) {
         return seedStr;
-    }
-
-    function typeDefinitionOrDeclaration(attrs): void {
-        eat (Token::Type);
-        let typename = identifier();
-        let tokens = [lastToken()]
-        let [formals, nonnullable] = typeSignature();
-        let fx;
-        if (match(Token::Assign)) {
-            let typedef = typeExpression ();
-            fx = new Ast::TypeFixture(formals, nonnullable, typedef);
-        }
-        else
-            fx = new Ast::TypeFixtureFwd(formals, nonnullable);
-        semicolon (fullStmt);
-        cx.addFixture(Ast::varInit, new Ast::PropName (new Ast::Name(attrs.ns, typename,tokens)), fx, attrs.static);
     }
 
     // DIRECTIVES
@@ -2913,20 +2708,11 @@ final class Parser
 
     static const attrbits = [];
     static {
-        attrbits[Token::Dynamic] = ATTRIBUTE_KEYWORD;
-        attrbits[Token::Final] = ATTRIBUTE_KEYWORD;
-        attrbits[Token::Native] = ATTRIBUTE_KEYWORD;
-        attrbits[Token::Override] = ATTRIBUTE_KEYWORD;
-        attrbits[Token::__Proto__] = ATTRIBUTE_KEYWORD;
-        attrbits[Token::Static] = ATTRIBUTE_KEYWORD;
         attrbits[Token::Var] = DEFINING_KEYWORD;
         attrbits[Token::Const] = DEFINING_KEYWORD;
         attrbits[Token::Let] = DEFINING_KEYWORD;
         attrbits[Token::Function] = DEFINING_KEYWORD;
         attrbits[Token::Class] = DEFINING_KEYWORD;
-        attrbits[Token::Interface] = DEFINING_KEYWORD;
-        attrbits[Token::Type] = DEFINING_KEYWORD;
-        attrbits[Token::Namespace] = DEFINING_KEYWORD;
         attrbits[Token::Use] = DEFINING_KEYWORD;
         attrbits[Token::SemiColon] = STATEMENT_FIRST;
         attrbits[Token::LeftBrace] = STATEMENT_FIRST;
@@ -3085,39 +2871,12 @@ final class Parser
                 continue;
             }
 
-            if (t == Token::Type) {
-                if (attrs != 0)
-                    Parse::syntaxError(this, "Illegal attribute on type definition.");
-                if (labels != null)
-                    Parse::syntaxError(this, "Illegal labeled type definition.");
-                typeDefinitionOrDeclaration (makeAttrs(ns, attrs));
-                continue;
-            }
-
-            if (t == Token::Namespace) {
-                if (attrs != 0)
-                    Parse::syntaxError(this, "Illegal attribute on namespace definition.");
-                if (labels != null)
-                    Parse::syntaxError(this, "Illegal labeled namespace definition.");
-                namespaceDefinition (makeAttrs(ns, attrs));
-                continue;
-            }
-
             if (t == Token::Class) {
                 if ((attrs & ~(ATTR_DYNAMIC | ATTR_FINAL)) != 0)
                     Parse::syntaxError(this, "Illegal attribute on class definition.");
                 if (labels != null)
                     Parse::syntaxError(this, "Illegal labeled class definition.");
                 dynamic override (tau = classBlk) classDefinitionOrDeclaration(makeAttrs(ns, attrs));
-                continue;
-            }
-
-            if (t == Token::Interface) {
-                if (attrs != 0)
-                    Parse::syntaxError(this, "Illegal attribute on interface definition.");
-                if (labels != null)
-                    Parse::syntaxError(this, "Illegal labeled interface definition.");
-                dynamic override (tau = interfaceBlk) interfaceDefinitionOrDeclaration(makeAttrs(ns, attrs));
                 continue;
             }
 
@@ -3184,24 +2943,6 @@ final class Parser
                 }
                 else
                     dynamic override (omega=fullStmt) functionDefinition (makeAttrs(ns, attrs));
-                continue;
-            }
-
-            if (t == Token::Type) {
-                if ((attrs & ATTR_STATIC) == 0)
-                    Parse::syntaxError(this, "'type' definition must be static.");
-                if ((attrs & ~ATTR_STATIC) != 0)
-                    Parse::syntaxError(this, "Illegal attribute on type definition.");
-                typeDefinitionOrDeclaration(makeAttrs(ns, attrs));
-                continue;
-            }
-
-            if (t == Token::Namespace) {
-                if ((attrs & ATTR_STATIC) == 0)
-                    Parse::syntaxError(this, "'namespace' definition must be static.");
-                if ((attrs & ~ATTR_STATIC) != 0)
-                    Parse::syntaxError(this, "Illegal attribute on namespace definition.");
-                namespaceDefinition(makeAttrs(ns, attrs));
                 continue;
             }
 
@@ -3408,34 +3149,6 @@ final class Parser
 
     function program (define_namespaces=true) : Ast::Program {
         start();
-
-        // FIXME: The following realization of the internal namespace
-        // is not at all safe, but using a random number here makes
-        // testing more difficult, and using a hash of the input is
-        // slow.  So this will do for the moment.
-
-        // FIXME: Namespaces are not defined for eval, but the
-        // following handling of that problem is probably insufficient
-        // because references to 'public' and 'internal' in the eval
-        // code should reference the ones inherited from the calling
-        // context.
-        //
-        // On the other hand, should global.eval() expose the internal
-        // namespace of the caller??
-
-        let internalNamespace = new Ast::InternalNamespace(Token::intern("<#internal " + filename + ">"));
-
-        cx.enterGlobal ();
-        if (define_namespaces) {
-            cx.addFixture(Ast::varInit, 
-                          new Ast::PropName(new Ast::Name(internalNamespace, Token::sym_internal, [])),
-                          new Ast::NamespaceFixture(internalNamespace));
-            cx.addFixture(Ast::varInit,
-                          new Ast::PropName(new Ast::Name(internalNamespace, Token::sym_public, [])),
-                          new Ast::NamespaceFixture(Ast::publicNS));
-        }
-        cx.pushNamespace(internalNamespace);
-        cx.pushNamespace(Ast::publicNS);
 
         let global_directives = directivesGlobal ();
         let vhead = cx.exitGlobal ();

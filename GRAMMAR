@@ -103,37 +103,38 @@ ReservedWord
 
 Keyword [one of]
     break
-    delete
-    import
-    this
     case
-    do
-    in
-    throw
     catch
-    else
-    instanceof
-    try
     class
-    export
-    let
-    typeof
-    continue
-    finally
-    new
-    var
     const
-    for
-    return
-    void
+    continue
     debugger
-    function
-    super
-    while
     default
+    delete
+    do
+    else
+    export
+    finally
+    for
+    function
     if
+    import
+    in
+    instanceof
+    let
+    new
+    return
+    super
     switch
+    this
+    throw
+    try
+    typeof
+    var
+    void
+    while
     with
+    yield   // FIXME not in es6 spec
 
 FutureReservedWord [one of]
     enum
@@ -187,10 +188,18 @@ Punctuator [one of]
     |=
     ^=
     <|
+    =>    // not in es6 spec
 
 DivPunctuator [one of]
     /
     /=
+
+NullLiteral
+    null
+
+BooleanLiteral ::
+    true
+    false
 
 NumericLiteral 
     DecimalLiteral
@@ -333,12 +342,12 @@ PrimaryExpression
     this
     Identifier
     Literal
-    ArrayLiteral
-    ObjectLiteral
+    ArrayInitializer
+    ObjectInitializer
     FunctionExpression
-    ClassExpression
-    GeneratorExpression
-    GeneratorComprehension
+    ClassExpression           // FIXME todo
+    GeneratorExpression       // FIXME todo
+    GeneratorComprehension    // FIXME todo
     ( Expression )
 
 Literal 
@@ -377,18 +386,21 @@ ArrayComprehension
     [ AssignmentExpression ComprehensionForList ]
     [ AssignmentExpression ComprehensionForList if Expression ]
 
+// [ x for y of 
+
+
 ComprehensionForList 
     ComprehensionFor
     ComprehensionForList ComprehensionFor
 
 ComprehensionFor 
-    for ForBinding of Expression
+    for ( ForBinding of Expression )
 
 ForBinding 
     BindingIdentifier
     BindingPattern
 
-ObjectLiteral 
+ObjectInitializer
     { }
     { PropertyDefinitionList }
     { PropertyDefinitionList , }
@@ -399,10 +411,10 @@ PropertyDefinitionList
 
 PropertyDefinition 
     IdentifierName
-    PropertyName  AssignmentExpression
+    PropertyName : AssignmentExpression
     MethodDefinition
 
-PropertyName 
+PropertyName
     IdentifierName
     StringLiteral
     NumericLiteral
@@ -589,7 +601,8 @@ AssignmentOperator [one of]
     |=
 
 AssignmentPattern 
-    ObjectAssignmentPattern ArrayAssignmentPattern
+    ObjectAssignmentPattern
+    ArrayAssignmentPattern
 
 ObjectAssignmentPattern 
     { }
@@ -881,17 +894,17 @@ CoverFormalsList
 ArrowFormalParameterList 
     FormalParameterList
 
-MethodDefinition 
+MethodDefinition
     PropertyName ( FormalParameterList ) { FunctionBody }
     * PropertyName ( FormalParameterList ) { FunctionBody }
     get PropertyName ( ) { FunctionBody }
     set PropertyName ( PropertySetParameterList ) { FunctionBody }
 
-PropertySetParameterList 
+PropertySetParameterList
     BindingIdentifier
     BindingPattern
 
-GeneratorDeclaration 
+GeneratorDeclaration
     function * BindingIdentifier ( FormalParameterList ) { FunctionBody }
 
 GeneratorExpression 

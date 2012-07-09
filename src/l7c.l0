@@ -37,17 +37,6 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
-public function compileHook (s:String)
-{
-    var t0 = new Date;
-    var maker = new SwfMaker ();
-    var bytes = ESC::compileStringToBytes (s);
-    var bytes = maker.makeSwf ([bytes], null);
-    print (bytes.length + " bytes in " + (new Date() - t0) + " ms");
-    return bytes;
-}
-
-
 {
     let total_frontend = 0;
     let total_backend = 0;
@@ -63,24 +52,13 @@ public function compileHook (s:String)
 
     for ( let i=0, limit=files.length ; i < limit ; i++ ) {
         let fname = files[i];
-        let [parse,cogen,[bytes,karyotype]] = ESC::compileFileToBytes (fname);
-        Util::writeBytesToFile(bytes, fname + ".abc");
-        //        Util::writeStringToFile (karyotype,fname+".karyotype");
+        let t0 = new Date;
+        let ast = ESC::parseFromFileAndEncodeAst(fname)
+        let t1 = new Date - t0;
+        Util::writeStringToFile(ast, fname + ".ast");
 
-        total_frontend += parse;
-        total_backend += cogen;
         print (fname);
-        print ("  Scan+parse:  " + parse + " ms");
-        print ("  Cogen:       " + cogen + " ms");
-
-        /*
-        var abc = Abc::parseAbcFile(new ABCByteStream(bytes));
-
-        print ("encoding karyotype file, bytes.length="+abc.bodies.length);
-        var tx = karyoFromAbc(fname, abc);
-        Util::writeStringToFile (tx,fname+".karyotype");
-        print (fname+".karyotype.txt, "+tx.length+" chars written");
-        */
+        print ("  Scan+parse:  " + t1 + " ms");
 
         // This is a hack.  The profiler needs to be callback-based; the
         // snapshot is captured so that the profiler won't lose data.
@@ -94,8 +72,6 @@ public function compileHook (s:String)
     if (files.length > 1) {
         print("");
         print("Total time: " + (after - before));
-        print("Front end:  " + total_frontend);
-        print("Back end:   " + total_backend);
     }
 
     if (prof) {
@@ -104,51 +80,3 @@ public function compileHook (s:String)
     }
 }
 
-// chr - CHRNAME CHRLABEL START END COLOR
-//      "       method#  0 size "
-
-function karyoFromAbc(fname, abc) {
-    var chr_count = 1;
-    var ticket = 1;
-    var out_str = "";
-    var code_size = 0;
-    var kname = fname.substring(fname.lastIndexOf("/")+1, fname.lastIndexOf("."));
-    var start;
-    var end = 0;
-
-    for each (body in abc.bodies) {
-        var band_str = "";
-        /*
-        for each (insn in body.code) {            
-            var bandlabel = ticket++;
-            var bandname = "b"+bandlabel;
-            start = end;
-            end = end + body.code.length;
-            var color = ticket % 2 ? "grey" : "black";
-            band_str += "\nband";
-            band_str += " " + chrname;
-            band_str += " " + bandname;
-            band_str += " " + bandlabel;
-            band_str += " " + start;
-            band_str += " " + end;
-            band_str += " " + color;
-        }
-        */
-
-        var chr_str = "";
-        var chrlabel = chr_count++;
-        var chrname = kname+"_"+chrlabel;
-        var start = 0;
-        var end = body.code.length; //end = end + body.code.length;
-        var color = "spectral-5-div-"+(chr_count%5+1);
-        chr_str += "\nchr -";
-        chr_str += " " + chrname;
-        chr_str += " " + chrname;
-        chr_str += " " + start;
-        chr_str += " " + end;
-        chr_str += " " + color;
-
-        out_str += "\n" + chr_str + band_str;
-    }
-    return out_str;
-}
