@@ -78,6 +78,7 @@ internal final class Rib
     static const CLASS_INSTANCE = 2;
     static const FUNCTION = 3;
     static const BLOCK = 4;
+    static const MODULE = 5;
 
     var defaultNamespace: (Ast::Expr | Ast::Namespace);
     var strict:           Boolean;
@@ -138,6 +139,12 @@ final class Definer
         enterRib(Rib.GLOBAL);
 
     function exitGlobal() 
+        exitRib();
+
+    function enterModule(): void
+        enterRib(Rib.MODULE);
+
+    function exitModule() 
         exitRib();
 
     function enterClassStatic(): void 

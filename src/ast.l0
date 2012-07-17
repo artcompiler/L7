@@ -45,9 +45,10 @@ use default namespace Ast,
 
 class ExprPool {
     var map = { }
-    var exprs = [ ]
-    var nodePool = { }
-    function intern(key) {
+    var exprs = [ '"unused"' ]
+    var nodes = [ '' ]
+
+    function intern(key, node) {
         let nid
         if (key in map) {
             nid = map[key]
@@ -55,10 +56,9 @@ class ExprPool {
         else {
             nid = exprs.length
             map[key] = nid
-            exprs.push(key)
-            nodePool["N"+nid] = key
+            exprs[nid] = key
+            nodes[nid] = node
         }
-        //print(key+"-->"+nid)
         return nid
     }
 
@@ -71,12 +71,20 @@ class ExprPool {
         return str
     }
 
+    function emit() {
+        let str = "["
+        for (let i = 0; i < exprs.length; i++) {
+            if (i > 0) {
+                str += "\n,"
+            }
+            str += " /* " + i + " */ "
+            str += exprs[i]
+        }
+        str += "\n]"
+        return str
+    }
+
 }
-
-
-
-
-
 
 interface Serializable {
     function serialize(s);
@@ -84,9 +92,10 @@ interface Serializable {
 
 class ASTNode {
     public function toString() {
+//        print("this="+this.constructor)
         let s = new Serializer(true)
-        s.serialize(this);
-        s.pool.dump()
+        return s.serialize(this);
+        //s.pool.dump()
     }
 
     function str()
@@ -147,7 +156,7 @@ class TempName extends ASTNode implements FixtureName, Serializable {
     override function intern(pool) {
         let e = ["TempName"]
         e.push(index)
-        return pool.intern(e)
+        return pool.intern(e, this)
     }
 }
 
@@ -168,7 +177,7 @@ class PropName extends ASTNode implements FixtureName, Serializable {
     override function intern(pool) {
         let e = ["PropName"]
         e.push(name.intern(pool))
-        return pool.intern(e)
+        return pool.intern(e, this)
     }
 
     override function toks()
@@ -187,7 +196,7 @@ class InitBinding extends ASTNode implements Serializable {
         let e = ["InitBinding"]
         e.push(name.intern(pool))
         e.push(expr.intern(pool))
-        return pool.intern(e)
+        return pool.intern(e, this)
     }
 
     override function toks() {
@@ -212,7 +221,7 @@ class Name extends ASTNode implements Serializable {
     override function intern(pool) {
         let e = ["Name"]
         e.push(String(id))
-        return pool.intern(e)
+        return pool.intern(e, this)
     }
 }
 
@@ -310,7 +319,7 @@ final class NamespaceSet extends ASTNode implements Serializable {
     function NamespaceSet(ns, link) : ns=ns, link=link {}
 
     function serialize(s)
-        "" //s.sClass(this, "NamespaceSet", "ns", "link");
+        s.sClass(this, "NamespaceSet", "ns", "link");
 }
 
 final class NamespaceSetList extends ASTNode implements Serializable {
@@ -464,7 +473,7 @@ class TernaryExpr extends Expr implements Serializable {
         let n1 = e1.intern(pool)
         let n2 = e2.intern(pool)
         let n3 = e3.intern(pool)
-        return pool.intern(["TernaryExpr", n1, n2, n3])
+        return pool.intern(["TernaryExpr", n1, n2, n3], this)
     }
 
     override function toks()
@@ -486,7 +495,7 @@ class BinaryExpr extends Expr implements Serializable {
         e.push(binaryOpStr(op))
         e.push(e1.intern(pool))
         e.push(e2.intern(pool))
-        return pool.intern(e)
+        return pool.intern(e, this)
     }
 
     override function toks() {
@@ -509,7 +518,7 @@ class BinaryTypeExpr extends Expr implements Serializable {
         e.push(op)
         e.push(e1.intern(pool))
         e.push(e2.intern(pool))
-        return pool.intern(e)
+        return pool.intern(e, this)
     }
 
 }
@@ -526,7 +535,7 @@ class UnaryExpr extends Expr implements Serializable {
         let e = ["UnaryExpr"]
         e.push(unaryOpStr(op))
         e.push(e1.intern(pool))
-        return pool.intern(e)
+        return pool.intern(e, this)
     }
 
     override function toks()
@@ -548,7 +557,7 @@ class ThisExpr extends Expr implements Serializable {
         "this";
 
     override function intern(pool) {
-        return pool.intern(["ThisExpr"])
+        return pool.intern(["ThisExpr"], this)
     }
 
     override function toks()
@@ -608,7 +617,7 @@ class CallExpr extends Expr implements Serializable {
         for each (arg in args) {
             e.push(arg.intern(pool))
         }
-        return pool.intern(e)
+        return pool.intern(e, this)
     }
 
     override function toks() {
@@ -661,7 +670,7 @@ class NewExpr extends Expr implements Serializable {
         for each (arg in args) {
             e.push(arg.intern(pool))
         }
-        return pool.intern(e)
+        return pool.intern(e, this)
     }
 
     override function toks() {
@@ -695,7 +704,7 @@ class ObjectRef extends Expr implements Serializable {
         let e = ["ObjectRef"]
         e.push(base.intern(pool))
         e.push(ident.intern(pool))
-        return pool.intern(e)
+        return pool.intern(e, this)
     }
 
 }
@@ -720,7 +729,7 @@ class ComputedName extends Expr implements Serializable {
     override function intern(pool) {
         let e = ["ComputedName"]
         e.push(expr.intern(pool))
-        return pool.intern(e)
+        return pool.intern(e, this)
     }
 
     override function toks()
@@ -750,7 +759,7 @@ class SetExpr extends Expr implements Serializable {
         e.push(op)
         e.push(le.intern(pool))
         e.push(re.intern(pool))
-        return pool.intern(e)
+        return pool.intern(e, this)
     }
 
     override function toks()
@@ -776,12 +785,11 @@ interface Comprehension {
 class ComprehendIf extends Expr implements Comprehension, Serializable {
     const condition: Expr;
     const subclause: ? Expr;
-    function ComprehendIf(condition, subclause) 
-        : condition=condition
-        , subclause=subclause {}
+    function ComprehendIf(condition) 
+        : condition=condition {}
         
     function serialize(s)
-        s.sClass(this, "ComprehendIf", "condition", "subclause");
+        s.sClass(this, "ComprehendIf", "condition");
 }
 
 class ComprehendLet extends Expr implements Comprehension, Serializable {
@@ -796,18 +804,16 @@ class ComprehendLet extends Expr implements Comprehension, Serializable {
 }
 
 class ComprehendFor extends Expr implements Comprehension, Serializable {
-    const is_each: Boolean;
     const head: Head;
     const iterator: Expr;
     const subclause: ? Expr;
-    function ComprehendFor(is_each, head, iterator, subclause) 
-        : is_each=is_each
-        , head=head
+    function ComprehendFor(head, iterator, subclause) 
+        : head=head
         , iterator=iterator
         , subclause=subclause {}
         
     function serialize(s)
-        s.sClass(this, "ComprehendFor", "is_each", "head", "iterator", "subclause");
+        s.sClass(this, "ComprehendFor", "head", "iterator", "subclause");
 }
 
 interface Bind {}
@@ -863,7 +869,7 @@ class InitExpr extends Expr implements Serializable {
         for each (let i in inits) {
             e.push(i.intern(pool))
         }
-        return pool.intern(e)
+        return pool.intern(e, this)
     }
 
     override function toks() {
@@ -895,7 +901,7 @@ class GetParam extends Expr implements Serializable {
 
     override function intern(pool) {
         let e = ["GetParam"]
-        return pool.intern(e)
+        return pool.intern(e, this)
     }
 }
 
@@ -908,7 +914,7 @@ class GetCogenTemp extends Expr implements Serializable {
 
     override function intern(pool) {
         let e = ["GetCogenTemp"]
-        return pool.intern(e)
+        return pool.intern(e, this)
     }
 }
 
@@ -933,7 +939,6 @@ class Identifier extends Expr implements IdentExpr, Serializable {
         , super(pos) {}
 
     function serialize(s)
-        //s.sClass(this, "Identifier", "ident", "nss", "tokens");
         s.sClass(this, "Identifier", "ident");
 
     override function str()
@@ -945,7 +950,7 @@ class Identifier extends Expr implements IdentExpr, Serializable {
     override function intern(pool) {
         let e = ["Identifier"]
         e.push(String(ident))
-        return pool.intern(e)
+        return pool.intern(e, this)
     }
 
     override function def()
@@ -968,7 +973,7 @@ class QualifiedIdentifier extends Expr implements IdentExpr, Serializable {
     override function intern(pool) {
         let e = ["QualifiedIdentifier"]
         e.push(ident)
-        return pool.intern(e)
+        return pool.intern(e, this)
     }
 
 }
@@ -987,7 +992,7 @@ class LiteralNull extends Expr implements LiteralExpr, Serializable {
 
     override function intern(pool) {
         let e = ["LiteralNull"]
-        return pool.intern(e)
+        return pool.intern(e, this)
     }
 
     override function toks()
@@ -1004,7 +1009,7 @@ class LiteralUndefined extends Expr implements LiteralExpr, Serializable {
 
     override function intern(pool) {
         let e = ["LiteralUndefined"]
-        return pool.intern(e)
+        return pool.intern(e, this)
     }
 
     override function toks()
@@ -1025,7 +1030,7 @@ class LiteralDouble extends Expr implements LiteralExpr, Serializable {
     override function intern(pool) {
         let e = ["LiteralDouble"]
         e.push('"'+doubleValue+'"')
-        return pool.intern(e)
+        return pool.intern(e, this)
     }
 
     override function toks()
@@ -1054,7 +1059,7 @@ class LiteralInt extends Expr implements LiteralExpr, Serializable {
     override function intern(pool) {
         let e = ["LiteralInt"]
         e.push('"'+intValue+'"')
-        return pool.intern(e)
+        return pool.intern(e, this)
     }
 }
 
@@ -1070,7 +1075,7 @@ class LiteralUInt extends Expr implements LiteralExpr, Serializable {
     override function intern(pool) {
         let e = ["LiteralUInt"]
         e.push(uintValue)
-        return pool.intern(e)
+        return pool.intern(e, this)
     }
 }
 
@@ -1088,7 +1093,7 @@ class LiteralBoolean extends Expr implements LiteralExpr, Serializable {
     override function intern(pool) {
         let e = ["LiteralBoolean"]
         e.push(String(booleanValue))
-        return pool.intern(e)
+        return pool.intern(e, this)
     }
 
     override function toks()
@@ -1109,7 +1114,7 @@ class LiteralString extends Expr implements LiteralExpr, Serializable {
     override function intern(pool) {
         let e = ["LiteralString"]
         e.push(String(strValue))
-        return pool.intern(e)
+        return pool.intern(e, this)
     }
 
     override function toks()
@@ -1127,14 +1132,14 @@ class LiteralArray extends Expr implements LiteralExpr, Serializable {
         , super(pos) { }
 
     function serialize(s)
-        s.sClass(this, "LiteralArray", "exprs", "ty");
+        s.sClass(this, "LiteralArray", "exprs", "spread");
 
     override function intern(pool) {
         let e = ["LiteralArray"]
         for each (expr in exprs) {
             e.push(expr.intern(pool))
         }
-        return pool.intern(e)
+        return pool.intern(e, this)
     }
 
     override function toks() {
@@ -1149,16 +1154,16 @@ class LiteralArray extends Expr implements LiteralExpr, Serializable {
 
 class LiteralComprehension extends Expr implements LiteralExpr, Serializable {
     const expr : Expr;
-    const comprehension : Comprehension;
-    const ty : TypeExpr;
-    function LiteralComprehension (expr, comprehension, ty, pos=0)
+    const forList : ComprehendFor;
+    const ifCond : ComprehendIf;
+    function LiteralComprehension (expr, forList, ifCond, pos=0)
         : expr = expr
-        , comprehension = comprehension
-        , ty = ty
+        , forList = forList
+        , ifCond = ifCond
         , super(pos) { }
 
     function serialize(s)
-        s.sClass(this, "LiteralComprehension", "expr", "comprehension", "ty");
+        s.sClass(this, "LiteralComprehension", "expr", "forList", "ifCond");
 }
 
 class LiteralNamespace extends Expr implements LiteralExpr, Serializable {
@@ -1186,7 +1191,7 @@ class LiteralObject extends Expr implements LiteralExpr, Serializable {
         , super(pos) { }
 
     function serialize(s)
-        s.sClass(this, "LiteralObject", "fields", "ty")
+        s.sClass(this, "LiteralObject", "fields")
 
     override function str()
         chrName
@@ -1204,7 +1209,7 @@ class LiteralObject extends Expr implements LiteralExpr, Serializable {
         for each (field in fields) {
             e.push(field.intern(pool))
         }
-        return pool.intern(e)
+        return pool.intern(e, this)
     }
 }
     
@@ -1232,7 +1237,7 @@ class LiteralField extends ASTNode implements Serializable {
         let e = ["LiteralField"]
         e.push(ident.intern(pool))
         e.push(expr.intern(pool))
-        return pool.intern(e)
+        return pool.intern(e, this)
     }
 }
 
@@ -1262,7 +1267,7 @@ class VirtualField extends ASTNode implements Serializable {
         let e = ["VirtualField"]
         e.push(name.intern(pool))
         e.push(func.intern(pool))
-        return pool.intern(e)
+        return pool.intern(e, this)
     }
 }
 
@@ -1284,7 +1289,7 @@ class LiteralFunction extends Expr implements LiteralExpr, Serializable {
     override function intern(pool) {
         let e = ["LiteralFunction"]
         e.push(func.filename+"#"+func.pos)
-        return pool.intern(e)
+        return pool.intern(e, this)
     }
 }
 
@@ -1300,7 +1305,7 @@ class LiteralRegExp extends Expr implements LiteralExpr, Serializable {
     override function intern(pool) {
         let e = ["LiteralRegExp"]
         e.push(src)
-        return pool.intern(e)
+        return pool.intern(e, this)
     }
 }
 
@@ -1517,7 +1522,7 @@ class Func extends ASTNode implements Serializable {
     override function intern(pool) {
         let e = ["Func"]
         e.push(filename+"#"+pos)
-        return pool.intern(e)
+        return pool.intern(e, this)
     }
 
 }
@@ -1576,7 +1581,7 @@ class NamespaceFixture extends ASTNode implements FixtureData, Serializable {
         : ns = ns {}
 
     function serialize(s)
-        "" //s.sClass(this, "NamespaceFixture", "ns");
+        s.sClass(this, "NamespaceFixture", "ns");
 }
 
 internal class FixtureFwd extends ASTNode implements FixtureData {
@@ -1671,7 +1676,7 @@ class ValFixture extends ASTNode implements FixtureData, Serializable {
         , isReadOnly=isReadOnly {}
 
     function serialize(s)
-        s.sClass(this, "ValFixture", "ty", "isReadOnly");
+        s.sClass(this, "ValFixture", "isReadOnly");
 }
 
 class VirtualValFixture extends ASTNode implements FixtureData, Serializable {
@@ -1685,7 +1690,16 @@ class VirtualValFixture extends ASTNode implements FixtureData, Serializable {
         , setter=setter {}
 
     function serialize(s)
-        s.sClass(this, "VirtualValFixture", "ty", "getter", "setter");
+        s.sClass(this, "VirtualValFixture", "getter", "setter");
+}
+
+class ModuleFixture extends ASTNode implements FixtureData, Serializable {
+    const module : Module;
+    function ModuleFixture(module)
+        : module = module {}
+
+    function serialize(s)
+        s.sClass(this, "ModuleFixture", "module");
 }
 
 interface TypeExpr {
@@ -2136,17 +2150,6 @@ class SuperStmt extends ASTNode implements Stmt, Serializable {
         s.sClass(this, "SuperStmt", "args", "spread");
 }
 
-class Block extends ASTNode implements Serializable {
-    const head  : ? Head;
-    const stmts : [...Stmt];
-    function Block (head,stmts)
-        : head = head
-        , stmts = stmts { }
-
-    function serialize(s) 
-        s.sClass(this, "Block", "head", "stmts");
-}
-
 /*
  * PROGRAM
  */
@@ -2162,9 +2165,34 @@ class Program extends ASTNode implements Serializable {
         , attr = attr
         , file = file {}
 
+    function serialize(s) {
+        print("Program body="+this.body)
+        return s.sClass(this, "Program", "body", "head", "attr", "file");
+    }
+}
+
+class Module extends ASTNode implements Serializable {
+    const name : Name;
+    const head : ? Head;
+    const body : [...Stmt];
+    function Module(name, head, body)
+        : name = name
+        , head = head
+        , body = body { }
+
+    function serialize(s) 
+        s.sClass(this, "Module", "name", "head", "body");
+}
+
+class Import extends ASTNode implements Serializable {
+    const importSpec : String;
+    const moduleSpec : String;
+    function Import(importSpec, moduleSpec)
+        : importSpec = importSpec
+        , moduleSpec = moduleSpec { }
+
     function serialize(s)
-        //s.sClass(this, "Program", "body", "head", "attr", "file");
-        s.sClass(this, "Program", "body");
+        s.sClass(this, "Import", "importSpec", "moduleSpec");
 }
 
 /* Helper tables */
@@ -2230,7 +2258,7 @@ class Serializer {
 
     public var pool;
     public function Serializer(compact=false) : compact=compact {
-        print("new Serializer")
+//        print("new Serializer")
         pool = new ExprPool();
     }
 
@@ -2245,10 +2273,10 @@ class Serializer {
             return String(obj);
 
         if (obj is String)
-            return "'" + sanitize(obj) + "'";
+            return '"' + sanitize(obj) + '"';
 
         if (obj is Token::Tok)
-            return "'" + obj + "'";
+            return '"' + obj + '"';
 
         throw new Error("Unserializable datum " + obj.constructor);
         return "[[" + obj + "]]";
@@ -2310,26 +2338,29 @@ class Serializer {
         // compress by maintaining an indexed dictionary of
         // layout arrays, which is emitted as part of the output.
 
-        let sep0 = compact ? "" : "\n, ";
-        let sep1 = compact ? "," : "\n, ";
+        let sep0 = "\n ";
+        let sep1 = "\n, ";
         let s = "";
-        if (compact)
+        if (compact) {
             //s += "{\/*" + rest[0] + "*\/ ";
-            s += "{ 'tag': '" + rest[0] + "',";
-        else
-            s += "{ 'ast_layout': " + serializeArray(rest, false);
+            s += '{ "tag": "' + rest[0] + '"';
+            s += rest.length > 1 ? ', ' : '';
+        }
+        else {
+            s += '{ "ast_layout": ' + serializeArray(rest, false);
+        }
 
         for ( let i=1, limit=rest.length ; i < limit ; i++ ) {
-            s += (i > 1 ? sep1 : sep0) + " '" + rest[i] + "': ";
+            s += (i > 1 ? sep1 : sep0) + ' "' + rest[i] + '": ';
             s += serialize(obj[rest[i]]);
         }
 
         s += "}";
-        return pool.intern(s);
+        return s; //pool.intern(s, obj);
     }
 
     public function sConstant(expr)
-        "{ 'ast_constant': '" + expr + "' }";
+        '{ "ast_constant": "' + expr + '" }';
 }
 
 // FIXME I:
@@ -2412,3 +2443,125 @@ class Unserializer {
         ESC::evaluateInScopeArray([s], [], "");
 }
 
+class JSON {
+    var pool;
+    var value;
+    public function JSON(pool)
+        : pool = pool { }
+
+    public function toValue(nid=0, obj=null) {
+        if (nid===0) {
+            nid = pool.length-1
+        }
+        let node = pool[nid]
+        print("JSON.toValue() nid="+nid+" node="+node.constructor)
+        if (node is Ast::Program) {
+            let nid = node.body;
+//            print("nid=" + nid)
+            return toValue(nid)
+        }
+        else if (node is Ast::ExprStmt) {
+            return toValue(node.expr)
+        }
+        else if (node is Ast::LiteralBoolean) {
+            return node.booleanValue;
+        }
+        else if (node is Ast::LiteralInt) {
+            return node.intValue;
+        }
+        else if (node is Ast::LiteralString) {
+            return node.strValue;
+        }
+        else if (node is Ast::Identifier) {
+            return node.ident;
+        }
+        else if (node is Ast::LiteralField) {
+            Util::assert(node.kind===0);
+            print("ident="+node.ident+" expr="+node.expr)
+            let key = toValue(node.ident);
+            let val = toValue(node.expr);
+            print("key="+key+" val="+val)
+            obj[key] = val;
+            return obj;
+        }
+        else if (node is Ast::LiteralObject) {
+            let obj = { }
+            let fields = node.fields
+            for (let i = 0; i < fields.length; i++) {
+                toValue(fields[i], obj)
+            }
+            return obj;
+        }
+        else if (node is Ast::LiteralArray) {
+            let val = [ ]
+            let exprs = node.exprs
+            print("exprs.length="+exprs.length)
+            for (let i = 0; i < exprs.length; i++) {
+                let nid = ""+exprs[i];
+                print("exprs.length="+exprs.length+" i="+i+" nid="+nid)
+                val[i] = toValue(nid)
+            }
+            return val;
+        }
+
+        throw "node type unknown: " + node.constructor;
+
+    }
+
+    function toString(obj) {
+        return serialize(obj)
+    }
+
+    function serialize(obj) {
+        let str = "";
+
+        let isArray = false;
+        if (obj is Array) {
+            isArray = true;
+        }
+
+        if (isArray) {
+            str += "[";
+        }
+        else {
+            str += "{";
+        }
+
+        for (var p in obj) {
+            print("p="+p)
+
+            var last = str.charAt(str.length-1);
+
+            if (last != "[" && last != "{") {
+                str += ", ";
+            }
+            
+            if (!isArray) { 
+                str += p + ":";
+            }
+
+            print("isArray="+isArray+" str="+str)
+
+            switch (typeof obj[p]) {
+            case "number":
+                str += obj[p];
+                break;
+            case "string":
+                str += "'" + obj[p].replace(new RegExp("\\\\", "g"), "\\\\").replace(new RegExp("'", "g"), "\\'").replace(new RegExp("\n", "g"), "") + "'";
+                break;
+            default:
+                str += serialize(obj[p]);
+                break;
+            }
+        }
+
+        if (isArray) {
+            str += "]";
+        }
+        else {
+            str += "}";
+        }
+        
+        return str;
+    }
+}

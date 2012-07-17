@@ -99,6 +99,7 @@ const interfaceBlk = new TAU("interfaceBlk");
 const localBlk = new TAU("localBlk");
 const statementBlk = new TAU("statementBlk");
 const constructorBlk = new TAU("constructorBlk");
+const moduleBlk = new TAU("moduleBlk");
 
 class OMEGA extends Util::ENUM { function OMEGA(s) : super(s) {} }
 const fullStmt = new OMEGA("fullStmt");
@@ -747,7 +748,9 @@ final class Parser
         let ifCond = null;
         if (hd()===Token::If) {
             eat(Token::If);
+            eat(Token::LeftParen);
             let cond = fullCommaExpression();
+            eat(Token::RightParen);
             ifCond = new Ast::ComprehendIf(cond);
         }
         return new Ast::LiteralComprehension(expr, forList, ifCond);
@@ -765,8 +768,8 @@ final class Parser
     function comprehensionForItem() {
         eat(Token::For);
         eat(Token::LeftParen);
-        let [pattern, annotation] = dynamic override (beta=noIn) typedPattern();
-        let [fixtures,init] = desugarBindingPattern (pattern, annotation, null, cx.getDefaultNamespace(), null, false);
+        let pattern = dynamic override (beta=allowIn, gamma=noExpr) forBinding();
+        let [fixtures,init] = desugarBindingPattern(pattern, Ast::anyType, null, cx.getDefaultNamespace(), null, false);
         eat(Token::Of);
         let iterator = fullCommaExpression();
         eat(Token::RightParen);
@@ -774,14 +777,7 @@ final class Parser
     }
 
     function forBinding() {
-        let $1
-        if (hd()===Token::LeftBrace || hd()===Token::LeftBracket) {
-            $1 = bindingPattern()
-        }
-        else {
-            $1 = bindingIdentifier()
-        }
-        return $1
+        return pattern()
     }
 
     function elementList ()
@@ -1369,7 +1365,7 @@ final class Parser
         Parse::internalError(this, "patternFromExpr, invalid pattern " + e);
     }
 
-    function fullCommaExpression(): Ast::Expr 
+    function fullCommaExpression(): Ast::Expr
         dynamic override (alpha=allowColon, beta=allowIn) commaExpression();
 
     function commaExpression(): Ast::Expr {
@@ -1381,24 +1377,24 @@ final class Parser
 
     // PATTERNS
 
-    function pattern () : Pattern {
-        switch (hd ()) {
-        case Token::LeftBrace:   return objectPattern ();
-        case Token::LeftBracket: return arrayPattern ();
-        default:                 return simplePattern ();
+    function pattern() : Pattern {
+        switch (hd()) {
+        case Token::LeftBrace:   return objectPattern();
+        case Token::LeftBracket: return arrayPattern();
+        default:                 return simplePattern();
         }
     }
 
-    function simplePattern () : Pattern {
+    function simplePattern() : Pattern {
         switch (gamma) {
-        case noExpr:    return new IdentifierPattern (identifier (), [lastToken()]);
-        case allowExpr: return new SimplePattern (leftHandSideExpression ());
+        case noExpr:    return new IdentifierPattern(identifier(), [lastToken()]);
+        case allowExpr: return new SimplePattern(leftHandSideExpression());
         }
     }
 
     function arrayPattern () : Ast::Expr {
         eat (Token::LeftBracket);
-        let [pattern, spread] = elementListPattern ();
+        let [pattern, spread] = elementListPattern();
         eat (Token::RightBracket);
 
         return new ArrayPattern (pattern, spread);
@@ -1439,7 +1435,7 @@ final class Parser
     }
 
     function typedPattern () : [Pattern,Ast::TypeExpr] {
-        let the_pattern = dynamic override (gamma=noExpr) pattern ();
+        let the_pattern = dynamic override (gamma=noExpr) pattern();
 
         if (match(Token::Colon)) 
             return [the_pattern, typeExpression ()];
@@ -2714,6 +2710,7 @@ final class Parser
         attrbits[Token::Function] = DEFINING_KEYWORD;
         attrbits[Token::Class] = DEFINING_KEYWORD;
         attrbits[Token::Use] = DEFINING_KEYWORD;
+        attrbits[Token::Module] = DEFINING_KEYWORD;
         attrbits[Token::SemiColon] = STATEMENT_FIRST;
         attrbits[Token::LeftBrace] = STATEMENT_FIRST;
         attrbits[Token::Break] = STATEMENT_FIRST;
@@ -2749,6 +2746,8 @@ final class Parser
 
     loop:
         do {
+            print("attributeString() ns="+ns)
+
             let t = hd();
             if (attrbits[t] == STATEMENT_FIRST) {
                 if (attrs != 0 || ns != null)
@@ -2877,6 +2876,11 @@ final class Parser
                 if (labels != null)
                     Parse::syntaxError(this, "Illegal labeled class definition.");
                 dynamic override (tau = classBlk) classDefinitionOrDeclaration(makeAttrs(ns, attrs));
+                continue;
+            }
+
+            if (t == Token::Module) {
+                dynamic override (tau=moduleBlk, omega=fullStmt) moduleDeclaration();
                 continue;
             }
 
@@ -3163,4 +3167,115 @@ final class Parser
                                   cx.topFunction(),
                                   filename );
     }
+
+
+    function moduleDeclaration(): void  {
+
+        eat (Token::Module);
+        let moduleId = identifier ();
+        let mname = new Ast::Name(Ast::publicNS, moduleId, [lastToken()]);
+        let fx;
+
+        currentModuleName = moduleId;
+        cx.enterModule();
+        
+        let body;
+
+        if (hd() === Token::Assign) {
+            eat(Token::Assign)
+            let importSpec = "*"
+            let moduleSpec = lexeme()
+            next()
+            body = [new Ast::Import(importSpec, moduleSpec)];
+        }
+        else {
+            eat (Token::LeftBrace);
+            body = moduleElementList();
+            eat (Token::RightBrace);
+        }
+        let head = cx.exitModule();
+        currentModuleName = Token::sym_EMPTY;
+
+        let module = new Ast::Module(mname,
+                                     head,
+                                     body);
+        
+        fx = new Ast::ModuleFixture (module);
+        
+        cx.addFixture(Ast::varInit, mname, fx);
+    }
+    
+
+    function moduleElementList(): [Ast::Stmt] {
+        // pragma, var, let, const, function, type, namespace, class, interface, statement
+        let stmts = [];
+
+        Util::assert(tau == moduleBlk);
+
+        while (hd () != Token::RightBrace && hd () != Token::EOS) {
+            let [found_attrs, ns, attrs, labels] = attributeString();
+
+            if (!found_attrs && ns != null) {
+                semicolon(omega);
+                stmts.push(new Ast::ExprStmt(ns));
+                continue;
+            }
+
+            if (ns != null)
+                ns = cx.resolveNamespaceExpr(ns);
+
+            let t = hd();
+
+            if (t == Token::Use) {
+                if (attrs != 0 || ns != null)
+                    Parse::syntaxError(this, "Pragmas cannot carry attributes");
+                if (labels != null)
+                    Parse::syntaxError(this, "Pragmas cannot be labeled");
+                pragma(true);
+                continue;
+            }
+
+            if (t == Token::Var ||
+                t == Token::Let && hd2() != Token::LeftParen ||
+                t == Token::Const && hd2() != Token::Function) {
+                if (attrs != 0)
+                    Parse::syntaxError(this, "Illegal attribute on variable definition.");
+                if (labels != null && t != Token::Var)
+                    Parse::syntaxError(this, "Only 'var' definitions can be labelled.");
+                let e = dynamic override (beta=allowIn) variableDefinition (makeAttrs(ns, attrs));
+                semicolon(fullStmt);
+                if (e != null) {
+                    // explicitly ignoring the labels here
+                    stmts.push(new Ast::ExprStmt(e));
+                }
+                continue;
+            }
+
+            if (t == Token::Function ||
+                t == Token::Const && hd2() == Token::Function) {
+                if ((attrs & ~ATTR_NATIVE) != 0)
+                    Parse::syntaxError(this, "Illegal attribute on function definition.");
+                if (labels != null)
+                    Parse::syntaxError(this, "Illegal labeled function definition.");
+                dynamic override (omega=fullStmt) functionDefinition (makeAttrs(ns, attrs));
+                firstdirective = false;
+                continue;
+            }
+
+            if (t == Token::Class) {
+                if ((attrs & ~(ATTR_DYNAMIC | ATTR_FINAL)) != 0)
+                    Parse::syntaxError(this, "Illegal attribute on class definition.");
+                if (labels != null)
+                    Parse::syntaxError(this, "Illegal labeled class definition.");
+                dynamic override (tau = classBlk) classDefinitionOrDeclaration(makeAttrs(ns, attrs));
+                continue;
+            }
+
+            pushStmt(stmts, labels, statement());
+        }
+
+        return stmts;
+    }
+
+
 }

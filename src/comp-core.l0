@@ -82,7 +82,7 @@ internal function compile(consume, produce, context, start_line) {
 
 class Flags 
 {
-    var es3_keywords = true;              // recognize only ES3 keywords (not future reserved)
+    var es3_keywords = false;              // recognize only ES3 keywords (not future reserved)
     var es4_kwd_debugger = false;         // language misfeature
     var debugging = false;                // true to enable debug code
     var ext_dynamic_override = false;     // true to enable 'dynamic override' expression
@@ -140,9 +140,9 @@ function parseFromStringAndEncodeAst(input, context="string input"): String {
     let parser = new Parse::Parser(input, getTopFixtures(), context);
     let program = parser.program();
     let s = new Ast::Serializer(true)
-    let result = s.serialize(program);
-    print(s.pool.dump())
-    return result
+    let str = s.serialize(program);
+    //print(s.pool.dump())
+    return [s.pool.nodes, str]
 }
 
 function parseFromFileAndEncodeAst(fname)

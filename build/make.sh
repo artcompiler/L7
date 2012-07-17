@@ -48,6 +48,7 @@ $BIN/shell $BIN/l0c.swf \
        $DIR/comp-env.l0 \
        $DIR/sampler.l0 \
        $DIR/swf.l0 \
+       $DIR/format.l0 \
        $DIR/l7c.l0
 
 cp ../src/l7c.l0.swf ../bin/l7c.swf

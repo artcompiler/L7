@@ -53,12 +53,11 @@
     for ( let i=0, limit=files.length ; i < limit ; i++ ) {
         let fname = files[i];
         let t0 = new Date;
-        let ast = ESC::parseFromFileAndEncodeAst(fname)
-        let t1 = new Date - t0;
-        Util::writeStringToFile(ast, fname + ".ast");
 
-        print (fname);
-        print ("  Scan+parse:  " + t1 + " ms");
+        let [nodes, str] = ESC::parseFromFileAndEncodeAst(fname)
+        let t1 = new Date - t0;
+        Util::writeStringToFile(str, fname + ".l7");
+        print("nodes.length="+nodes.length+" str="+str)
 
         // This is a hack.  The profiler needs to be callback-based; the
         // snapshot is captured so that the profiler won't lose data.

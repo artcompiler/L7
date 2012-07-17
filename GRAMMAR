@@ -122,6 +122,7 @@ Keyword [one of]
     in
     instanceof
     let
+    module
     new
     return
     super
@@ -384,7 +385,7 @@ SpreadElement
 
 ArrayComprehension 
     [ AssignmentExpression ComprehensionForList ]
-    [ AssignmentExpression ComprehensionForList if Expression ]
+    [ AssignmentExpression ComprehensionForList if ( Expression ) ]
 
 // [ x for y of 
 
