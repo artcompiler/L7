@@ -1676,7 +1676,7 @@ final class Parser
         let head = cx.exitBlock ();
         eat (Token::RightBrace);
 
-        return new Ast::Block (head, directive_list);
+        return new Ast::Block(head, directive_list);
     }
 
     function labeledStatement () : Ast::Stmt {
@@ -3151,7 +3151,7 @@ final class Parser
         f.reify_activation = reify_activation;
     }
 
-    function program (define_namespaces=true) : Ast::Program {
+    function program(define_namespaces=true) : Ast::Program {
         start();
 
         let global_directives = directivesGlobal ();
