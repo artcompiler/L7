@@ -90,7 +90,18 @@ interface Serializable {
     function serialize(s);
 }
 
+var nidTicket = 10001
+
+function genNID() {
+    return "N" + nidTicket++
+}
+
 class ASTNode {
+    var nid : String
+    public function ASTNode() 
+        : nid = genNID() {
+    }
+
     public function toString() {
 //        print("this="+this.constructor)
         let s = new Serializer(true)
@@ -207,20 +218,20 @@ class InitBinding extends ASTNode implements Serializable {
 
 class Name extends ASTNode implements Serializable {
     const ns;
-    const id;
+    const ident;
     const tokens;
-    function Name(ns, id, tokens) : ns=ns, id=id, tokens=tokens {}
+    function Name(ns, ident, tokens) : ns=ns, ident=ident, tokens=tokens {}
      
     function serialize(s)
         //s.sClass(this, "Name", "ns", "id");
-        s.sClass(this, "Name", "id");
+        s.sClass(this, "Name", "ident");
 
     override function toks()
         tokens
 
     override function intern(pool) {
         let e = ["Name"]
-        e.push(String(id))
+        e.push(String(ident))
         return pool.intern(e, this)
     }
 }
@@ -396,6 +407,7 @@ const assignLogicalAndOp = 12;
 const assignLogicalOrOp = 13;
 
 function binaryOpStr(op) {
+
     return '"' + op + '"'
 }
 
@@ -416,6 +428,7 @@ const bitwiseNotOp = 9;
 const logicalNotOp = 10;
 const typeOp = 11;
 const spreadOp = 12;
+const parenOp = 13;
 
 function unaryOpStr(op) {
     switch (op) {
@@ -1108,8 +1121,10 @@ class LiteralString extends Expr implements LiteralExpr, Serializable {
         , tokens=tokens
         , super(pos) {}
 
-    function serialize(s)
-        s.sClass(this, "LiteralString", "strValue");
+    function serialize(s) {
+        print("LiteralString.serialize() strValue="+strValue)
+        return s.sClass(this, "LiteralString", "strValue");
+    }
 
     override function intern(pool) {
         let e = ["LiteralString"]
@@ -1153,9 +1168,9 @@ class LiteralArray extends Expr implements LiteralExpr, Serializable {
 }
 
 class LiteralComprehension extends Expr implements LiteralExpr, Serializable {
-    const expr : Expr;
-    const forList : ComprehendFor;
-    const ifCond : ComprehendIf;
+    const expr : Expr
+    const forList : ComprehendFor
+    const ifCond : ComprehendIf
     function LiteralComprehension (expr, forList, ifCond, pos=0)
         : expr = expr
         , forList = forList
@@ -1261,7 +1276,7 @@ class VirtualField extends ASTNode implements Serializable {
         , func=func {}
 
     function serialize(s)
-        s.sClass(this, "VirtualField", "tag", "name", "kind", "func");
+        s.sClass(this, "VirtualField", "name", "kind", "func");
 
     override function intern(pool) {
         let e = ["VirtualField"]
@@ -2284,8 +2299,8 @@ class Serializer {
         if (obj is Number || obj is Boolean || obj is int || obj is uint || obj === null || obj === undefined)
             return String(obj);
 
-        if (obj is String)
-            return '"' + sanitize(obj) + '"';
+        if (obj is String || obj is Token::Tok)
+            return '"' + sanitize(String(obj)) + '"';
 
         if (obj is Token::Tok)
             return '"' + obj + '"';
@@ -2337,6 +2352,7 @@ class Serializer {
             }
             r += s.substring(start, i);
         }
+        print("sanitize() s="+s+" r="+r)
         return r;
     }
 
@@ -2355,7 +2371,7 @@ class Serializer {
         let s = "";
         if (compact) {
             //s += "{\/*" + rest[0] + "*\/ ";
-            s += '{ "tag": "' + rest[0] + '"';
+            s += '{ "tag": "' + rest[0] + '"' + ', "id": "' + obj.nid + '"'
             s += rest.length > 1 ? ', ' : '';
         }
         else {
@@ -2455,6 +2471,7 @@ class Unserializer {
         ESC::evaluateInScopeArray([s], [], "");
 }
 
+/*
 class JSON {
     var pool;
     var value;
@@ -2577,3 +2594,4 @@ class JSON {
         return str;
     }
 }
+*/

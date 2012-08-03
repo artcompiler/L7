@@ -1,2 +1,2 @@
-print("hello, world!")
-print("adios, world!")
+for (var p in o) {
+}

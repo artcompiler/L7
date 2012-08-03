@@ -399,7 +399,7 @@ ComprehensionForList
 ComprehensionFor 
     for ( ForBinding of Expression )
 
-ForBinding 
+ForBinding
     BindingIdentifier
     BindingPattern
 

@@ -534,7 +534,8 @@ final class Parser
                     /// case (pat: *) {
                     else {
                         typ = new Ast::ElementTypeRef (t,i);
-                        exp = new Ast::ObjectRef (new Ast::GetTemp (n), makeIdentifier( Token::intern(i), Ast::publicNSSL ));
+                        //exp = new Ast::ObjectRef (new Ast::GetTemp (n), makeIdentifier( Token::intern(i), Ast::publicNSSL ));
+                        exp = new Ast::ObjectRef (new Ast::GetTemp (n), new Ast::ComputedName(new Ast::LiteralInt(i)));
                         // FIXME what is the ns of a temp and how do we refer it
                         ptn = sub;
                     }
@@ -581,7 +582,7 @@ final class Parser
 
     function parenExpression() : Ast::Expr {
         eat (Token::LeftParen);
-        let expr = fullCommaExpression();
+        let expr = new Ast::UnaryExpr(Ast::parenOp, fullCommaExpression());
         eat (Token::RightParen);
 
         return expr;
@@ -1417,7 +1418,7 @@ final class Parser
     }
 
     function fieldPattern () : FieldPattern {
-        let field_name = fieldName ();
+        let field_name = fieldName();
         let field_pattern = null;
 
         if (match(Token::Colon))
@@ -1432,6 +1433,31 @@ final class Parser
         }
 
         return new FieldPattern (field_name, field_pattern);
+    }
+
+    function fieldName () : Ast::IdentExpr {
+        switch (hd ()) {
+        case Token::StringLiteral:
+            if (hd2() == Token::DoubleColon)
+                break;
+            return let (name = new Ast::Identifier(lexeme(), Ast::publicNSSL, 0, [lastToken()])) next(), name;
+
+        case Token::IntLiteral:
+        case Token::UIntLiteral:
+            return let (name = new Ast::Identifier(Token::intern(parseInt(lexeme().text)), Ast::publicNSSL, 0, [lastToken()])) next(), name;
+
+        case Token::DoubleLiteral:
+            return let (name = new Ast::Identifier(Token::intern(parseFloat(lexeme().text)), Ast::publicNSSL, 0, [lastToken()])) next(), name;
+
+        case Token::DecimalLiteral:
+            return let (name = new Ast::Identifier(Token::intern(new decimal(lexeme().text)), Ast::publicNSSL, 0, [lastToken()])) next(), name;
+
+        default:
+            if (Token::isReserved(hd ()))
+                return let (name = new Ast::Identifier(lexeme(), Ast::publicNSSL, 0, [lastToken()])) next(), name;
+            break;
+        }
+        return nameExpression();
     }
 
     function typedPattern () : [Pattern,Ast::TypeExpr] {
@@ -2387,8 +2413,8 @@ final class Parser
 
     static type PARAMETERS = {
         fixtures: [Ast::Fixture],
-        inits: [Ast::Expr],
-        exprs: [Ast::Expr],
+        inits: [Ast::Expr],       // destructuring
+        exprs: [Ast::Expr],       // default values
         types: [Ast::TypeExpr],
         numparams: *
     };
@@ -2462,8 +2488,9 @@ final class Parser
     function parameterToFixturesAndInitAndType(param, n) : [[Ast::Fixture], Ast::Expr, Ast::TypeExpr] {
         let [k,[p,t]] = param;
         let [f,i] = desugarBindingPattern (p, t, new Ast::GetParam (n), Ast::publicNS, Ast::letInit, false);
-        f.push (new Ast::Fixture(new Ast::TempName (n), 
-                                 new Ast::ValFixture (t,false))); // temp for desugaring
+        // Don't put temps in the top level param table, put into initexpr or letexpr in initializers
+        //f.push (new Ast::Fixture(new Ast::TempName (n), 
+        //                         new Ast::ValFixture (t,false))); // temp for desugaring
         return [f,i,t];
     }
 
